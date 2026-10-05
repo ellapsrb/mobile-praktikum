@@ -1,0 +1,38 @@
+{
+  "student": {
+    "name": "Tina Ellina Wati",
+    "nim": "2415051043"
+  },
+  "courses": [
+    {
+      "code": "PTI101",
+      "title": "Pemrograman Mobile",
+      "credits": 3,
+      "status": "Selesai"
+    },
+    {
+      "code": "PTI102",
+      "title": "Pemrograman Web",
+      "credits": 3,
+      "status": "Selesai"
+    },
+    {
+      "code": "PTI103",
+      "title": "Jaringan Komputer",
+      "credits": 3,
+      "status": "Belum"
+    },
+    {
+      "code": "PTI104",
+      "title": "Pengolahan Citra Digital",
+      "credits": 3,
+      "status": "Belum"
+    },
+    {
+      "code": "PTI105",
+      "title": "Kecerdasan Buatan",
+      "credits": 3,
+      "status": "Belum"
+    }
+  ]
+}
