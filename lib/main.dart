@@ -1,12 +1,10 @@
 
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:provider/provider.dart';
 
 import 'course_state.dart';
 import 'models/course.dart';
+import 'services/course_service.dart';
 
 const String studentName = 'Tina Ellina Wati';
 const String studentId = '2415051043';
@@ -47,41 +45,21 @@ class DebuggingPage extends StatefulWidget {
 }
 
 class _DebuggingPageState extends State<DebuggingPage> {
+  final CourseService courseService = CourseService();
+
   bool isLoading = false;
 
-  // Membaca JSON dan mengubah data pertama menjadi objek Course.
-  Future<Course> loadFirstCourse() async {
-    final jsonString = await rootBundle.loadString(
-      'assets/data/student_data.json',
-    );
-
-    final data = jsonDecode(jsonString) as Map<String, dynamic>;
-    final courses = data['courses'] as List<dynamic>;
-
-    if (courses.isEmpty) {
-      throw Exception('Data mata kuliah masih kosong.');
-    }
-
-    return Course.fromJson(
-      courses.first as Map<String, dynamic>,
-    );
-  }
-
-  Future<void> openDetail() async {
+  Future<void> openDetail(Course course) async {
     if (isLoading) return;
 
     setState(() {
       isLoading = true;
     });
 
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (!mounted) return;
-
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => const DetailPage(),
+        builder: (_) => DetailPage(course: course),
       ),
     );
 
@@ -94,7 +72,6 @@ class _DebuggingPageState extends State<DebuggingPage> {
 
   @override
   Widget build(BuildContext context) {
-    // WATCH: memantau perubahan jumlah favorit.
     final courseState = context.watch<CourseState>();
 
     return Scaffold(
@@ -116,7 +93,6 @@ class _DebuggingPageState extends State<DebuggingPage> {
 
           const SizedBox(height: 16),
 
-          // Menampilkan jumlah mata kuliah favorit.
           Card(
             child: ListTile(
               leading: const Icon(
@@ -133,7 +109,7 @@ class _DebuggingPageState extends State<DebuggingPage> {
           const SizedBox(height: 16),
 
           const Text(
-            'Data Mata Kuliah dari JSON',
+            'Daftar Mata Kuliah',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -142,18 +118,16 @@ class _DebuggingPageState extends State<DebuggingPage> {
 
           const SizedBox(height: 8),
 
-          // Tahap 8: mengubah JSON menjadi objek Course.
-          FutureBuilder<Course>(
-            future: loadFirstCourse(),
+          // Data dimuat melalui CourseService.
+          FutureBuilder<List<Course>>(
+            future: courseService.loadCourses(),
             builder: (context, snapshot) {
               if (snapshot.connectionState ==
                   ConnectionState.waiting) {
-                return const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                return const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(
+                    child: CircularProgressIndicator(),
                   ),
                 );
               }
@@ -163,133 +137,59 @@ class _DebuggingPageState extends State<DebuggingPage> {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Text(
-                      'Gagal membaca data: ${snapshot.error}',
+                      'Gagal memuat data: ${snapshot.error}',
                     ),
                   ),
                 );
               }
 
-              if (!snapshot.hasData) {
-                return const Text('Data mata kuliah tidak tersedia.');
+              if (!snapshot.hasData ||
+                  snapshot.data!.isEmpty) {
+                return const Card(
+                  child: ListTile(
+                    title: Text('Belum ada data mata kuliah.'),
+                  ),
+                );
               }
 
-              final course = snapshot.data!;
+              final courses = snapshot.data!;
 
-              return Card(
-                child: ListTile(
-                  leading: const Icon(Icons.school),
-                  title: Text(course.title),
-                  subtitle: Text(
-                    'Kode: ${course.code}\n'
-                    'SKS: ${course.credits}',
-                  ),
-                  trailing: Text(course.status),
-                ),
+              return Column(
+                children: courses.map((course) {
+                  final isFavorite =
+                      courseState.favorites.contains(course.code);
+
+                  return Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.school),
+                      title: Text(course.title),
+                      subtitle: Text(
+                        'Kode: ${course.code} | '
+                        'SKS: ${course.credits}\n'
+                        'Status: ${course.status}',
+                      ),
+                      isThreeLine: true,
+                      trailing: IconButton(
+                        icon: Icon(
+                          isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: isFavorite ? Colors.red : null,
+                        ),
+                        onPressed: () {
+                          context
+                              .read<CourseState>()
+                              .toggleFavorite(course.code);
+                        },
+                      ),
+                      onTap: isLoading
+                          ? null
+                          : () => openDetail(course),
+                    ),
+                  );
+                }).toList(),
               );
             },
-          ),
-
-          const SizedBox(height: 16),
-
-          const Text(
-            'Contoh State Management',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Card(
-            child: Column(
-              children: [
-                Consumer<CourseState>(
-                  builder: (context, state, child) {
-                    final isFavorite =
-                        state.favorites.contains('PTI001');
-
-                    return ListTile(
-                      title: const Text('Pemrograman Mobile'),
-                      subtitle: const Text('ID: PTI001'),
-                      trailing: IconButton(
-                        icon: Icon(
-                          isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: isFavorite ? Colors.red : null,
-                        ),
-                        // READ: menjalankan aksi toggle favorit.
-                        onPressed: () {
-                          context
-                              .read<CourseState>()
-                              .toggleFavorite('PTI001');
-                        },
-                      ),
-                    );
-                  },
-                ),
-
-                const Divider(height: 1),
-
-                Consumer<CourseState>(
-                  builder: (context, state, child) {
-                    final isFavorite =
-                        state.favorites.contains('PTI002');
-
-                    return ListTile(
-                      title: const Text('Struktur Data'),
-                      subtitle: const Text('ID: PTI002'),
-                      trailing: IconButton(
-                        icon: Icon(
-                          isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: isFavorite ? Colors.red : null,
-                        ),
-                        onPressed: () {
-                          context
-                              .read<CourseState>()
-                              .toggleFavorite('PTI002');
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          const Text(
-            'Navigasi',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.open_in_new),
-              title: const Text('Buka Halaman Detail'),
-              subtitle: const Text(
-                'Contoh navigasi ke halaman detail.',
-              ),
-              trailing: isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Icon(Icons.arrow_forward_ios),
-              onTap: isLoading ? null : openDetail,
-            ),
           ),
         ],
       ),
@@ -298,13 +198,22 @@ class _DebuggingPageState extends State<DebuggingPage> {
 }
 
 class DetailPage extends StatelessWidget {
-  const DetailPage({super.key});
+  final Course course;
+
+  const DetailPage({
+    super.key,
+    required this.course,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final courseState = context.watch<CourseState>();
+    final isFavorite =
+        courseState.favorites.contains(course.code);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Halaman Detail'),
+        title: const Text('Detail Mata Kuliah'),
       ),
       body: Center(
         child: Padding(
@@ -318,23 +227,41 @@ class DetailPage extends StatelessWidget {
                 color: Colors.blue,
               ),
               const SizedBox(height: 16),
-              const Text(
-                studentName,
-                style: TextStyle(
-                  fontSize: 20,
+              Text(
+                course.title,
+                style: const TextStyle(
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
-              const Text('NIM: $studentId'),
+              const SizedBox(height: 12),
+              Text('Kode: ${course.code}'),
+              Text('SKS: ${course.credits}'),
+              Text('Status: ${course.status}'),
+              const SizedBox(height: 12),
+              Text('Nama: $studentName'),
+              Text('NIM: $studentId'),
               const SizedBox(height: 24),
-              const Text(
-                'Ini adalah halaman detail aplikasi.',
-                textAlign: TextAlign.center,
+              ElevatedButton.icon(
+                onPressed: () {
+                  context
+                      .read<CourseState>()
+                      .toggleFavorite(course.code);
+                },
+                icon: Icon(
+                  isFavorite
+                      ? Icons.favorite
+                      : Icons.favorite_border,
+                ),
+                label: Text(
+                  isFavorite
+                      ? 'Hapus dari Favorit'
+                      : 'Tambah ke Favorit',
+                ),
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
+              const SizedBox(height: 8),
+              OutlinedButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Kembali'),
               ),
