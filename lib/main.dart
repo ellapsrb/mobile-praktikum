@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'course_state.dart';
 import 'models/course.dart';
 import 'services/course_service.dart';
+import 'repositories/course_repository.dart';
 
 const String studentName = 'Tina Ellina Wati';
 const String studentId = '2415051043';
@@ -45,7 +46,9 @@ class DebuggingPage extends StatefulWidget {
 }
 
 class _DebuggingPageState extends State<DebuggingPage> {
-  final CourseService courseService = CourseService();
+  // Repository langsung dibuat agar sudah siap digunakan.
+  final CourseRepository courseRepository =
+      CourseRepository(CourseService());
 
   bool isLoading = false;
 
@@ -118,9 +121,8 @@ class _DebuggingPageState extends State<DebuggingPage> {
 
           const SizedBox(height: 8),
 
-          // Data dimuat melalui CourseService.
           FutureBuilder<List<Course>>(
-            future: courseService.loadCourses(),
+            future: courseRepository.getCourses(),
             builder: (context, snapshot) {
               if (snapshot.connectionState ==
                   ConnectionState.waiting) {
@@ -147,7 +149,9 @@ class _DebuggingPageState extends State<DebuggingPage> {
                   snapshot.data!.isEmpty) {
                 return const Card(
                   child: ListTile(
-                    title: Text('Belum ada data mata kuliah.'),
+                    title: Text(
+                      'Belum ada data mata kuliah.',
+                    ),
                   ),
                 );
               }
@@ -157,15 +161,17 @@ class _DebuggingPageState extends State<DebuggingPage> {
               return Column(
                 children: courses.map((course) {
                   final isFavorite =
-                      courseState.favorites.contains(course.code);
+                      courseState.favorites.contains(
+                    course.code,
+                  );
 
                   return Card(
                     child: ListTile(
                       leading: const Icon(Icons.school),
                       title: Text(course.title),
                       subtitle: Text(
-                        'Kode: ${course.code} | '
-                        'SKS: ${course.credits}\n'
+                        'Kode: ${course.code}\n'
+                        'SKS: ${course.credits} | '
                         'Status: ${course.status}',
                       ),
                       isThreeLine: true,
@@ -208,6 +214,7 @@ class DetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final courseState = context.watch<CourseState>();
+
     final isFavorite =
         courseState.favorites.contains(course.code);
 
@@ -216,7 +223,7 @@ class DetailPage extends StatelessWidget {
         title: const Text('Detail Mata Kuliah'),
       ),
       body: Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -227,6 +234,7 @@ class DetailPage extends StatelessWidget {
                 color: Colors.blue,
               ),
               const SizedBox(height: 16),
+
               Text(
                 course.title,
                 style: const TextStyle(
@@ -235,14 +243,21 @@ class DetailPage extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
+
               const SizedBox(height: 12),
+
               Text('Kode: ${course.code}'),
               Text('SKS: ${course.credits}'),
               Text('Status: ${course.status}'),
+
               const SizedBox(height: 12),
-              Text('Nama: $studentName'),
-              Text('NIM: $studentId'),
+
+              const Text('Data Mahasiswa'),
+              const Text(studentName),
+              const Text('NIM: $studentId'),
+
               const SizedBox(height: 24),
+
               ElevatedButton.icon(
                 onPressed: () {
                   context
@@ -260,7 +275,9 @@ class DetailPage extends StatelessWidget {
                       : 'Tambah ke Favorit',
                 ),
               ),
+
               const SizedBox(height: 8),
+
               OutlinedButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Kembali'),
