@@ -1,7 +1,12 @@
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:provider/provider.dart';
+
 import 'course_state.dart';
+import 'models/course.dart';
 
 const String studentName = 'Tina Ellina Wati';
 const String studentId = '2415051043';
@@ -44,6 +49,24 @@ class DebuggingPage extends StatefulWidget {
 class _DebuggingPageState extends State<DebuggingPage> {
   bool isLoading = false;
 
+  // Membaca JSON dan mengubah data pertama menjadi objek Course.
+  Future<Course> loadFirstCourse() async {
+    final jsonString = await rootBundle.loadString(
+      'assets/data/student_data.json',
+    );
+
+    final data = jsonDecode(jsonString) as Map<String, dynamic>;
+    final courses = data['courses'] as List<dynamic>;
+
+    if (courses.isEmpty) {
+      throw Exception('Data mata kuliah masih kosong.');
+    }
+
+    return Course.fromJson(
+      courses.first as Map<String, dynamic>,
+    );
+  }
+
   Future<void> openDetail() async {
     if (isLoading) return;
 
@@ -71,7 +94,7 @@ class _DebuggingPageState extends State<DebuggingPage> {
 
   @override
   Widget build(BuildContext context) {
-    // WATCH: mendengarkan perubahan jumlah favorit
+    // WATCH: memantau perubahan jumlah favorit.
     final courseState = context.watch<CourseState>();
 
     return Scaffold(
@@ -93,7 +116,7 @@ class _DebuggingPageState extends State<DebuggingPage> {
 
           const SizedBox(height: 16),
 
-          // Menggunakan watch untuk menampilkan jumlah favorit
+          // Menampilkan jumlah mata kuliah favorit.
           Card(
             child: ListTile(
               leading: const Icon(
@@ -105,6 +128,65 @@ class _DebuggingPageState extends State<DebuggingPage> {
                 '${courseState.favorites.length} favorit',
               ),
             ),
+          ),
+
+          const SizedBox(height: 16),
+
+          const Text(
+            'Data Mata Kuliah dari JSON',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Tahap 8: mengubah JSON menjadi objek Course.
+          FutureBuilder<Course>(
+            future: loadFirstCourse(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState ==
+                  ConnectionState.waiting) {
+                return const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Gagal membaca data: ${snapshot.error}',
+                    ),
+                  ),
+                );
+              }
+
+              if (!snapshot.hasData) {
+                return const Text('Data mata kuliah tidak tersedia.');
+              }
+
+              final course = snapshot.data!;
+
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.school),
+                  title: Text(course.title),
+                  subtitle: Text(
+                    'Kode: ${course.code}\n'
+                    'SKS: ${course.credits}',
+                  ),
+                  trailing: Text(course.status),
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 16),
@@ -122,7 +204,6 @@ class _DebuggingPageState extends State<DebuggingPage> {
           Card(
             child: Column(
               children: [
-                // CONSUMER: membatasi bagian UI yang mendengarkan state
                 Consumer<CourseState>(
                   builder: (context, state, child) {
                     final isFavorite =
@@ -138,7 +219,7 @@ class _DebuggingPageState extends State<DebuggingPage> {
                               : Icons.favorite_border,
                           color: isFavorite ? Colors.red : null,
                         ),
-                        // READ: memanggil aksi tanpa listen
+                        // READ: menjalankan aksi toggle favorit.
                         onPressed: () {
                           context
                               .read<CourseState>()
@@ -182,7 +263,7 @@ class _DebuggingPageState extends State<DebuggingPage> {
           const SizedBox(height: 16),
 
           const Text(
-            'Contoh Penanganan Navigasi',
+            'Navigasi',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -196,7 +277,7 @@ class _DebuggingPageState extends State<DebuggingPage> {
               leading: const Icon(Icons.open_in_new),
               title: const Text('Buka Halaman Detail'),
               subtitle: const Text(
-                'Mencegah navigasi berulang saat tombol ditekan.',
+                'Contoh navigasi ke halaman detail.',
               ),
               trailing: isLoading
                   ? const SizedBox(
