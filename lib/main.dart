@@ -1,11 +1,18 @@
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'course_state.dart';
 
 const String studentName = 'Tina Ellina Wati';
 const String studentId = '2415051043';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider<CourseState>(
+      create: (_) => CourseState(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -15,7 +22,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Debugging Challenge',
+      title: 'Learning Dashboard',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
@@ -35,14 +42,7 @@ class DebuggingPage extends StatefulWidget {
 }
 
 class _DebuggingPageState extends State<DebuggingPage> {
-  // Local state
   bool isLoading = false;
-
-  // Tahap 3: shared state milik parent
-  bool favorites = false;
-
-  // Tahap 4: ValueNotifier untuk counter favorite
-  final ValueNotifier<int> favoriteCount = ValueNotifier<int>(0);
 
   Future<void> openDetail() async {
     if (isLoading) return;
@@ -51,391 +51,171 @@ class _DebuggingPageState extends State<DebuggingPage> {
       isLoading = true;
     });
 
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const DetailPage(),
+        builder: (_) => const DetailPage(),
       ),
     );
 
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
+    if (!mounted) return;
 
-  // Mengubah state favorite dan memperbarui counter
-  void toggleFavorites() {
     setState(() {
-      favorites = !favorites;
+      isLoading = false;
     });
-
-    // Dua child menggunakan nilai favorite yang sama.
-    favoriteCount.value = favorites ? 2 : 0;
-  }
-
-  @override
-  void dispose() {
-    favoriteCount.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // WATCH: mendengarkan perubahan jumlah favorit
+    final courseState = context.watch<CourseState>();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Debugging Challenge'),
+        title: const Text('Learning Dashboard'),
       ),
-      body: SingleChildScrollView(
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // IDENTITAS
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      studentName,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 5),
-                    Text('NIM: $studentId'),
-                  ],
-                ),
+        children: [
+          const Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                child: Icon(Icons.person),
               ),
+              title: Text(studentName),
+              subtitle: Text('NIM: $studentId'),
             ),
-
-            const SizedBox(height: 20),
-
-            // TAHAP 3: LIFTING STATE UP
-            const Text(
-              'Tahap 3 - Lifting State Up',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            FavoriteChild(
-              title: 'Child 1',
-              isFavorite: favorites,
-              onFavoriteChanged: toggleFavorites,
-            ),
-            FavoriteChild(
-              title: 'Child 2',
-              isFavorite: favorites,
-              onFavoriteChanged: toggleFavorites,
-            ),
-
-            const SizedBox(height: 25),
-
-            // TAHAP 4: VALUENOTIFIER
-            const Text(
-              'Tahap 4 - ValueNotifier',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Jumlah Favorite',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    ValueListenableBuilder<int>(
-                      valueListenable: favoriteCount,
-                      builder: (context, value, child) {
-                        return Text(
-                          '$value',
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Tekan tombol favorite pada Child 1 '
-                      'atau Child 2 untuk mengubah jumlahnya.',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // KASUS A: RENDERFLEX OVERFLOW
-            const Text(
-              'Kasus A - RenderFlex Overflow',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info, size: 30),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        '$studentId - $studentName - '
-                        'Teks panjang untuk menguji '
-                        'RenderFlex overflow pada Row.',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Solusi: Expanded membatasi Text pada '
-              'ruang yang tersedia.',
-            ),
-
-            const SizedBox(height: 25),
-
-            // KASUS B: LISTVIEW DALAM COLUMN
-            const Text(
-              'Kasus B - ListView dalam Column',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Card(
-              child: SizedBox(
-                height: 220,
-                child: Column(
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.all(10),
-                      child: Text(
-                        'Daftar Data',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: 5,
-                        itemBuilder: (context, index) {
-                          return ListTile(
-                            leading: CircleAvatar(
-                              child: Text('${index + 1}'),
-                            ),
-                            title: Text('Data ${index + 1}'),
-                            subtitle: const Text('Data contoh'),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Solusi: Expanded memberikan batas tinggi '
-              'kepada ListView.',
-            ),
-
-            const SizedBox(height: 25),
-
-            // KASUS C: KEYBOARD OVERFLOW
-            const Text(
-              'Kasus C - Keyboard Overflow',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    const Text(
-                      'Form Input',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    const TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Nama',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const TextField(
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        labelText: 'Komentar',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Data berhasil diproses',
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text('Simpan'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Solusi: SingleChildScrollView membantu '
-              'form tetap dapat diakses saat keyboard muncul.',
-            ),
-
-            const SizedBox(height: 25),
-
-            // KASUS D: NAVIGASI GANDA
-            const Text(
-              'Kasus D - Navigasi Ganda',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : openDetail,
-                    child: Text(
-                      isLoading
-                          ? 'Membuka halaman...'
-                          : 'Buka Detail',
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // RINGKASAN
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Ringkasan Solusi',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Text('A. Row → Expanded'),
-                    Text('B. Column + ListView → Expanded'),
-                    Text('C. Form → SingleChildScrollView'),
-                    Text('D. Navigasi → cegah aksi ganda'),
-                    Text('E. Counter → ValueNotifier'),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// CHILD FAVORITE
-class FavoriteChild extends StatelessWidget {
-  final String title;
-  final bool isFavorite;
-  final VoidCallback onFavoriteChanged;
-
-  const FavoriteChild({
-    super.key,
-    required this.title,
-    required this.isFavorite,
-    required this.onFavoriteChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: Icon(
-          isFavorite ? Icons.favorite : Icons.favorite_border,
-        ),
-        title: Text(title),
-        subtitle: Text(
-          isFavorite ? 'Status: Favorite' : 'Status: Bukan Favorite',
-        ),
-        trailing: IconButton(
-          icon: Icon(
-            isFavorite ? Icons.favorite : Icons.favorite_border,
           ),
-          onPressed: onFavoriteChanged,
-        ),
+
+          const SizedBox(height: 16),
+
+          // Menggunakan watch untuk menampilkan jumlah favorit
+          Card(
+            child: ListTile(
+              leading: const Icon(
+                Icons.favorite,
+                color: Colors.red,
+              ),
+              title: const Text('Mata Kuliah Favorit'),
+              subtitle: Text(
+                '${courseState.favorites.length} favorit',
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          const Text(
+            'Contoh State Management',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Card(
+            child: Column(
+              children: [
+                // CONSUMER: membatasi bagian UI yang mendengarkan state
+                Consumer<CourseState>(
+                  builder: (context, state, child) {
+                    final isFavorite =
+                        state.favorites.contains('PTI001');
+
+                    return ListTile(
+                      title: const Text('Pemrograman Mobile'),
+                      subtitle: const Text('ID: PTI001'),
+                      trailing: IconButton(
+                        icon: Icon(
+                          isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: isFavorite ? Colors.red : null,
+                        ),
+                        // READ: memanggil aksi tanpa listen
+                        onPressed: () {
+                          context
+                              .read<CourseState>()
+                              .toggleFavorite('PTI001');
+                        },
+                      ),
+                    );
+                  },
+                ),
+
+                const Divider(height: 1),
+
+                Consumer<CourseState>(
+                  builder: (context, state, child) {
+                    final isFavorite =
+                        state.favorites.contains('PTI002');
+
+                    return ListTile(
+                      title: const Text('Struktur Data'),
+                      subtitle: const Text('ID: PTI002'),
+                      trailing: IconButton(
+                        icon: Icon(
+                          isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: isFavorite ? Colors.red : null,
+                        ),
+                        onPressed: () {
+                          context
+                              .read<CourseState>()
+                              .toggleFavorite('PTI002');
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          const Text(
+            'Contoh Penanganan Navigasi',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.open_in_new),
+              title: const Text('Buka Halaman Detail'),
+              subtitle: const Text(
+                'Mencegah navigasi berulang saat tombol ditekan.',
+              ),
+              trailing: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.arrow_forward_ios),
+              onTap: isLoading ? null : openDetail,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// DETAIL PAGE
 class DetailPage extends StatelessWidget {
   const DetailPage({super.key});
 
@@ -443,27 +223,36 @@ class DetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detail Page'),
+        title: const Text('Halaman Detail'),
       ),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle, size: 70),
-              const SizedBox(height: 20),
+              const Icon(
+                Icons.school,
+                size: 64,
+                color: Colors.blue,
+              ),
+              const SizedBox(height: 16),
               const Text(
-                'Navigasi berhasil dibuka',
+                studentName,
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 10),
-              const Text(studentName),
+              const SizedBox(height: 8),
               const Text('NIM: $studentId'),
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
+              const Text(
+                'Ini adalah halaman detail aplikasi.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Kembali'),
