@@ -1,22 +1,48 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'course_state.dart';
 import 'models/course.dart';
 import 'services/course_service.dart';
+import 'services/course_api_service.dart';
 import 'repositories/course_repository.dart';
 
 const String studentName = 'Tina Ellina Wati';
 const String studentId = '2415051043';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Menguji REST API ketika aplikasi dijalankan.
+  testApi();
+
   runApp(
     ChangeNotifierProvider<CourseState>(
       create: (_) => CourseState(),
       child: const MyApp(),
     ),
   );
+}
+
+// Fungsi untuk mengambil dan menguji data REST API.
+Future<void> testApi() async {
+  final apiService = CourseApiService();
+
+  try {
+    final courses = await apiService.fetchCourses();
+
+    debugPrint('========== HASIL PENGUJIAN API ==========');
+    debugPrint('Jumlah data dari API: ${courses.length}');
+
+    if (courses.isNotEmpty) {
+      debugPrint('Data pertama: ${courses.first}');
+    }
+
+    debugPrint('Pengambilan data API berhasil.');
+    debugPrint('=========================================');
+  } catch (e) {
+    debugPrint('Pengambilan data API gagal: $e');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -46,7 +72,6 @@ class DebuggingPage extends StatefulWidget {
 }
 
 class _DebuggingPageState extends State<DebuggingPage> {
-  // Repository langsung dibuat agar sudah siap digunakan.
   final CourseRepository courseRepository =
       CourseRepository(CourseService());
 
@@ -139,7 +164,8 @@ class _DebuggingPageState extends State<DebuggingPage> {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Text(
-                      'Gagal memuat data: ${snapshot.error}',
+                      'Gagal memuat data mata kuliah: '
+                      '${snapshot.error}',
                     ),
                   ),
                 );
@@ -180,7 +206,8 @@ class _DebuggingPageState extends State<DebuggingPage> {
                           isFavorite
                               ? Icons.favorite
                               : Icons.favorite_border,
-                          color: isFavorite ? Colors.red : null,
+                          color:
+                              isFavorite ? Colors.red : null,
                         ),
                         onPressed: () {
                           context
@@ -233,6 +260,7 @@ class DetailPage extends StatelessWidget {
                 size: 64,
                 color: Colors.blue,
               ),
+
               const SizedBox(height: 16),
 
               Text(
