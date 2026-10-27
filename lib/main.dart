@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/course.dart';
 import 'services/course_api_service.dart';
+import 'repositories/course_repository.dart';
 
 void main() {
   runApp(const MyApp());
@@ -37,19 +38,21 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  final CourseApiService apiService = CourseApiService();
+  late final CourseRepository repository;
 
   late Future<List<Course>> coursesFuture;
 
   @override
   void initState() {
     super.initState();
-    coursesFuture = apiService.fetchCourses();
+
+    repository = CourseRepository(CourseApiService());
+    coursesFuture = repository.getCourses();
   }
 
   void muatUlangData() {
     setState(() {
-      coursesFuture = apiService.fetchCourses();
+      coursesFuture = repository.getCourses();
     });
   }
 
@@ -61,7 +64,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // Menerjemahkan beberapa judul bawaan JSONPlaceholder.
   String terjemahkanJudul(String judul) {
     const Map<String, String> terjemahan = {
       'sunt aut facere repellat provident occaecati excepturi optio reprehenderit':
@@ -79,10 +81,9 @@ class _DashboardPageState extends State<DashboardPage> {
     return terjemahan[judul] ?? judul;
   }
 
-  // Form tambah dan edit course.
+  // Form untuk menambah dan mengedit course.
   Future<void> tampilkanFormCourse({Course? course}) async {
     final bool modeEdit = course != null;
-
     final formKey = GlobalKey<FormState>();
 
     final kodeController = TextEditingController(
@@ -99,12 +100,12 @@ class _DashboardPageState extends State<DashboardPage> {
           : '3',
     );
 
-    bool sedangMenyimpan = false;
-
     try {
       final bool? berhasil = await showDialog<bool>(
         context: context,
         builder: (dialogContext) {
+          bool sedangMenyimpan = false;
+
           return StatefulBuilder(
             builder: (context, setDialogState) {
               return AlertDialog(
@@ -166,6 +167,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 sks > 6) {
                               return 'SKS harus antara 1 sampai 6';
                             }
+
                             return null;
                           },
                         ),
@@ -186,8 +188,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     onPressed: sedangMenyimpan
                         ? null
                         : () async {
-                            if (!formKey.currentState!
-                                .validate()) {
+                            if (!formKey.currentState!.validate()) {
                               return;
                             }
 
@@ -207,22 +208,22 @@ class _DashboardPageState extends State<DashboardPage> {
                               userId: course?.userId ?? 1,
                               code: kodeController.text.trim(),
                               title: judulController.text.trim(),
-                              credits:
-                                  int.parse(sksController.text),
-                              status:
-                                  course?.status ?? 'active',
+                              credits: int.parse(
+                                sksController.text,
+                              ),
+                              status: course?.status ?? 'active',
                               body: course?.body ??
                                   'Mata kuliah Pendidikan Teknik Informatika',
                             );
 
                             try {
                               if (modeEdit) {
-                                await apiService.updateCourse(
+                                await repository.updateCourse(
                                   course!.id!,
                                   dataCourse,
                                 );
                               } else {
-                                await apiService.createCourse(
+                                await repository.createCourse(
                                   dataCourse,
                                 );
                               }
@@ -260,8 +261,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
         tampilkanPesan(
           modeEdit
-              ? 'Permintaan perubahan berhasil dikirim'
-              : 'Permintaan tambah course berhasil dikirim',
+              ? 'Permintaan edit berhasil dikirim'
+              : 'Permintaan tambah berhasil dikirim',
         );
       }
     } finally {
@@ -271,7 +272,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // DELETE: Menghapus course dengan konfirmasi.
+  // DELETE: Menghapus course setelah konfirmasi.
   Future<void> hapusCourse(Course course) async {
     if (course.id == null) {
       tampilkanPesan('ID course tidak tersedia');
@@ -284,7 +285,7 @@ class _DashboardPageState extends State<DashboardPage> {
         return AlertDialog(
           title: const Text('Hapus Mata Kuliah?'),
           content: Text(
-            'Apakah kamu yakin ingin menghapus '
+            'Yakin ingin menghapus '
             '"${terjemahkanJudul(course.title)}"?',
           ),
           actions: [
@@ -311,15 +312,12 @@ class _DashboardPageState extends State<DashboardPage> {
     if (konfirmasi != true || !mounted) return;
 
     try {
-      await apiService.deleteCourse(course.id!);
+      await repository.deleteCourse(course.id!);
 
       if (!mounted) return;
 
       muatUlangData();
-
-      tampilkanPesan(
-        'Permintaan hapus course berhasil dikirim',
-      );
+      tampilkanPesan('Permintaan hapus berhasil dikirim');
     } catch (error) {
       tampilkanPesan(
         'Gagal menghapus course. Periksa koneksi API.',
@@ -327,7 +325,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // Kartu mata kuliah.
+  // Widget kartu course.
   Widget buildKartuCourse(Course course, int index) {
     final String judul = terjemahkanJudul(course.title);
 
@@ -335,9 +333,7 @@ class _DashboardPageState extends State<DashboardPage> {
         ? course.code
         : 'MK-${(index + 1).toString().padLeft(2, '0')}';
 
-    final int sks = course.credits > 0
-        ? course.credits
-        : 3;
+    final int sks = course.credits > 0 ? course.credits : 3;
 
     return Card(
       elevation: 0,
@@ -376,10 +372,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     onPressed: () {
                       tampilkanFormCourse(course: course);
                     },
-                    icon: const Icon(
-                      Icons.edit,
-                      size: 18,
-                    ),
+                    icon: const Icon(Icons.edit, size: 18),
                     label: const Text('Edit'),
                   ),
                 ),

@@ -1,13 +1,28 @@
-
 import '../models/course.dart';
-import '../services/course_service.dart';
+import '../services/course_api_service.dart';
 
 class CourseRepository {
-  final CourseService service;
+  CourseRepository(this.apiService);
 
-  CourseRepository(this.service);
+  final CourseApiService apiService;
 
+  // GET: Mengambil semua course
   Future<List<Course>> getCourses() {
-    return service.loadCourses();
+    return apiService.fetchCourses();
+  }
+
+  // POST: Menambahkan course
+  Future<Course> createCourse(Course course) {
+    return apiService.createCourse(course);
+  }
+
+  // PUT: Memperbarui course
+  Future<void> updateCourse(int id, Course course) {
+    return apiService.updateCourse(id, course);
+  }
+
+  // DELETE: Menghapus course
+  Future<void> deleteCourse(int id) {
+    return apiService.deleteCourse(id);
   }
 }
