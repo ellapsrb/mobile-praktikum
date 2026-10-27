@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'models/course.dart';
 import 'services/course_api_service.dart';
 
-const String studentName = 'Tina Ellina Wati';
-const String studentId = '2415051043';
-
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
+
+const String studentName = 'Tina Ellina Wati';
+const String studentId = '2415051043';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -17,12 +16,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Dasbor Pembelajaran',
+      title: 'Learning Dashboard',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.indigo,
-        ),
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF565DA8),
+        ),
+        scaffoldBackgroundColor: const Color(0xFFFAF7FF),
       ),
       home: const DashboardPage(),
     );
@@ -41,40 +41,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
   late Future<List<Course>> coursesFuture;
 
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  final TextEditingController _codeController =
-      TextEditingController();
-  final TextEditingController _titleController =
-      TextEditingController();
-  final TextEditingController _creditsController =
-      TextEditingController();
-
-  final Map<int, String> judulIndonesia = {
-    1: 'Panduan Membuat Program dan Mengelola Data',
-    2: 'Pengenalan Konsep Dasar Pemrograman',
-    3: 'Strategi Pemecahan Masalah dalam Pemrograman',
-    4: 'Penerapan Teknologi dalam Kehidupan Sehari-hari',
-    5: 'Dasar-Dasar Pengembangan Aplikasi',
-    6: 'Pengelolaan Data dan Informasi',
-    7: 'Pengenalan Sistem Komputer',
-    8: 'Dasar-Dasar Jaringan Komputer',
-    9: 'Penerapan Algoritma dalam Pemrograman',
-    10: 'Pengembangan Sistem Informasi',
-  };
-
   @override
   void initState() {
     super.initState();
     coursesFuture = apiService.fetchCourses();
-  }
-
-  @override
-  void dispose() {
-    _codeController.dispose();
-    _titleController.dispose();
-    _creditsController.dispose();
-    super.dispose();
   }
 
   void muatUlangData() {
@@ -83,14 +53,52 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
-  // Menampilkan form untuk membuat course baru.
-  void tampilkanFormCourse() {
-    _codeController.clear();
-    _titleController.clear();
-    _creditsController.clear();
-    _formKey.currentState?.reset();
+  void tampilkanPesan(String pesan) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(pesan)),
+    );
+  }
 
-    showDialog<void>(
+  // Menerjemahkan beberapa judul bawaan JSONPlaceholder.
+  String terjemahkanJudul(String judul) {
+    const Map<String, String> terjemahan = {
+      'sunt aut facere repellat provident occaecati excepturi optio reprehenderit':
+          'Pengantar Pemrograman',
+      'qui est esse': 'Dasar-Dasar Teknologi Informasi',
+      'ea molestias quasi exercitationem repellat qui ipsa sit aut':
+          'Pengembangan Aplikasi',
+      'eum et est occaecati': 'Sistem Informasi',
+      'nesciunt quas odio': 'Algoritma dan Pemrograman',
+      'dolorem eum magni eos aperiam quia':
+          'Pengantar Basis Data',
+      'magnam facilis autem':
+          'Jaringan Komputer',
+      'dolorem dolore est ipsam':
+          'Pengembangan Perangkat Lunak',
+    };
+
+    return terjemahan[judul] ?? judul;
+  }
+
+  Future<void> tampilkanFormCourse({Course? course}) async {
+    final bool modeEdit = course != null;
+
+    final formKey = GlobalKey<FormState>();
+    final kodeController = TextEditingController(
+      text: course?.code ?? '',
+    );
+    final judulController = TextEditingController(
+      text: modeEdit
+          ? terjemahkanJudul(course.title)
+          : '',
+    );
+    final sksController = TextEditingController(
+      text: course != null && course.credits > 0
+          ? course.credits.toString()
+          : '3',
+    );
+
+    final bool? berhasil = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         bool sedangMenyimpan = false;
@@ -98,68 +106,57 @@ class _DashboardPageState extends State<DashboardPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Tambah Course'),
-              content: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
+              title: Text(
+                modeEdit ? 'Edit Mata Kuliah' : 'Tambah Mata Kuliah',
+              ),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       TextFormField(
-                        controller: _codeController,
+                        controller: kodeController,
                         decoration: const InputDecoration(
-                          labelText: 'Kode Course',
+                          labelText: 'Kode Mata Kuliah',
                           hintText: 'Contoh: PTI101',
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          if (value == null ||
-                              value.trim().isEmpty) {
-                            return 'Kode course wajib diisi';
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Kode mata kuliah wajib diisi';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
-                        controller: _titleController,
+                        controller: judulController,
                         decoration: const InputDecoration(
-                          labelText: 'Judul Course',
+                          labelText: 'Nama Mata Kuliah',
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          if (value == null ||
-                              value.trim().isEmpty) {
-                            return 'Judul course wajib diisi';
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Nama mata kuliah wajib diisi';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
-                        controller: _creditsController,
+                        controller: sksController,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
-                          labelText: 'Credits / SKS',
+                          labelText: 'Jumlah SKS',
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          if (value == null ||
-                              value.trim().isEmpty) {
-                            return 'Credits wajib diisi';
+                          final sks = int.tryParse(value ?? '');
+
+                          if (sks == null || sks < 1 || sks > 6) {
+                            return 'Masukkan SKS antara 1 sampai 6';
                           }
-
-                          final int? credits =
-                              int.tryParse(value.trim());
-
-                          if (credits == null) {
-                            return 'Credits harus berupa angka bulat';
-                          }
-
-                          if (credits <= 0) {
-                            return 'Credits harus lebih dari 0';
-                          }
-
                           return null;
                         },
                       ),
@@ -171,14 +168,21 @@ class _DashboardPageState extends State<DashboardPage> {
                 TextButton(
                   onPressed: sedangMenyimpan
                       ? null
-                      : () => Navigator.pop(dialogContext),
+                      : () => Navigator.pop(dialogContext, false),
                   child: const Text('Batal'),
                 ),
-                ElevatedButton(
+                FilledButton(
                   onPressed: sedangMenyimpan
                       ? null
                       : () async {
-                          if (!_formKey.currentState!.validate()) {
+                          if (!formKey.currentState!.validate()) {
+                            return;
+                          }
+
+                          if (modeEdit && course.id == null) {
+                            tampilkanPesan(
+                              'ID mata kuliah tidak tersedia',
+                            );
                             return;
                           }
 
@@ -186,55 +190,43 @@ class _DashboardPageState extends State<DashboardPage> {
                             sedangMenyimpan = true;
                           });
 
-                          final Course course = Course(
-                            code: _codeController.text.trim(),
-                            title: _titleController.text.trim(),
-                            credits: int.parse(
-                              _creditsController.text.trim(),
-                            ),
-                            status: 'active',
-                            userId: 1,
+                          final dataCourse = Course(
+                            id: course?.id,
+                            userId: course?.userId ?? 1,
+                            code: kodeController.text.trim(),
+                            title: judulController.text.trim(),
+                            credits: int.parse(sksController.text),
+                            status: course?.status ?? 'active',
+                            body: course?.body ??
+                                'Mata kuliah Pendidikan Teknik Informatika',
                           );
 
                           try {
-                            await apiService.createCourse(course);
+                            if (modeEdit) {
+                              await apiService.updateCourse(
+                                course!.id!,
+                                dataCourse,
+                              );
+                            } else {
+                              await apiService.createCourse(dataCourse);
+                            }
 
-                            if (!mounted) return;
+                            if (!dialogContext.mounted) return;
 
-                            Navigator.pop(dialogContext);
-
-                            muatUlangData();
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Permintaan POST berhasil dikirim!',
-                                ),
-                              ),
-                            );
-                          } catch (e) {
+                            Navigator.pop(dialogContext, true);
+                          } catch (error) {
                             setDialogState(() {
                               sedangMenyimpan = false;
                             });
 
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Gagal menambahkan course: $e',
-                                ),
-                              ),
+                            tampilkanPesan(
+                              'Gagal menyimpan data. Periksa koneksi API.',
                             );
                           }
                         },
-                  child: sedangMenyimpan
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text('Simpan'),
+                  child: Text(
+                    sedangMenyimpan ? 'Menyimpan...' : 'Simpan',
+                  ),
                 ),
               ],
             );
@@ -242,251 +234,224 @@ class _DashboardPageState extends State<DashboardPage> {
         );
       },
     );
+
+    kodeController.dispose();
+    judulController.dispose();
+    sksController.dispose();
+
+    if (!mounted) return;
+
+    if (berhasil == true) {
+      muatUlangData();
+
+      tampilkanPesan(
+        modeEdit
+            ? 'Permintaan perubahan berhasil dikirim'
+            : 'Mata kuliah berhasil ditambahkan',
+      );
+    }
+  }
+
+  Widget buildKartuCourse(Course course, int index) {
+    final String judul = terjemahkanJudul(course.title);
+
+    // Data tambahan ini hanya untuk tampilan ketika field API kosong.
+    final String kode = course.code.trim().isNotEmpty
+        ? course.code
+        : 'MK-${(index + 1).toString().padLeft(2, '0')}';
+
+    final int sks = course.credits > 0 ? course.credits : 3;
+
+    return Card(
+      elevation: 0,
+      color: const Color(0xFFF3F0FA),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(
+          color: Color(0xFFE3DDEC),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              judul,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('Kode: $kode'),
+            const SizedBox(height: 4),
+            Text('SKS: $sks'),
+            const Spacer(),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () {
+                  tampilkanFormCourse(course: course);
+                },
+                icon: const Icon(Icons.edit, size: 18),
+                label: const Text('Edit'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dasbor Pembelajaran'),
-        backgroundColor:
-            Theme.of(context).colorScheme.primaryContainer,
+        title: const Text('Learning Dashboard'),
+        backgroundColor: const Color(0xFFFAF7FF),
         actions: [
           IconButton(
-            onPressed: tampilkanFormCourse,
-            icon: const Icon(Icons.add),
-            tooltip: 'Tambah course',
-          ),
-          IconButton(
+            tooltip: 'Muat ulang data',
             onPressed: muatUlangData,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Muat ulang data',
           ),
         ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool layarLebar = constraints.maxWidth >= 600;
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => tampilkanFormCourse(),
+        icon: const Icon(Icons.add),
+        label: const Text('Tambah Course'),
+      ),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              margin: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+              elevation: 0,
+              color: const Color(0xFFF3F0FA),
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFE0E2FF),
+                  child: Icon(
+                    Icons.school,
+                    color: Color(0xFF343D78),
+                  ),
+                ),
+                title: const Text(
+                  studentName,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                subtitle: const Text(
+                  'NIM: $studentId\n'
+                  'Pendidikan Teknik Informatika',
+                ),
+                isThreeLine: true,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Daftar Mata Kuliah',
+                style: TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: FutureBuilder<List<Course>>(
+                future: coursesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1000),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Identitas mahasiswa.
-                    Card(
+                  if (snapshot.hasError) {
+                    return Center(
                       child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Row(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircleAvatar(
-                              radius: 30,
-                              backgroundColor: Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer,
-                              child: const Icon(
-                                Icons.school,
-                                size: 32,
-                              ),
+                            const Icon(
+                              Icons.cloud_off,
+                              size: 48,
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    studentName,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text('NIM: $studentId'),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Pendidikan Teknik Informatika',
-                                  ),
-                                ],
-                              ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Gagal mengambil data mata kuliah.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 12),
+                            FilledButton.icon(
+                              onPressed: muatUlangData,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Coba Lagi'),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Daftar Data dari REST API',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Data berikut diambil dari server menggunakan '
-                      'HTTP GET.',
-                    ),
-                    const SizedBox(height: 16),
+                    );
+                  }
 
-                    // Menampilkan status permintaan GET.
-                    FutureBuilder<List<Course>>(
-                      future: coursesFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(32),
-                              child: CircularProgressIndicator(),
-                            ),
+                  final courses = snapshot.data ?? [];
+
+                  if (courses.isEmpty) {
+                    return const Center(
+                      child: Text('Belum ada data mata kuliah.'),
+                    );
+                  }
+
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final int jumlahKolom =
+                          constraints.maxWidth >= 900
+                              ? 3
+                              : constraints.maxWidth >= 500
+                                  ? 2
+                                  : 1;
+
+                      return GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(
+                          12,
+                          4,
+                          12,
+                          90,
+                        ),
+                        itemCount: courses.length,
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: jumlahKolom,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          mainAxisExtent: 190,
+                        ),
+                        itemBuilder: (context, index) {
+                          return buildKartuCourse(
+                            courses[index],
+                            index,
                           );
-                        }
-
-                        if (snapshot.hasError) {
-                          return Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                children: [
-                                  const Icon(
-                                    Icons.error_outline,
-                                    size: 48,
-                                    color: Colors.red,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    'Gagal mengambil data dari server.',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ElevatedButton.icon(
-                                    onPressed: muatUlangData,
-                                    icon: const Icon(Icons.refresh),
-                                    label: const Text('Coba Lagi'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-
-                        final List<Course> courses =
-                            snapshot.data ?? <Course>[];
-
-                        if (courses.isEmpty) {
-                          return const Card(
-                            child: Padding(
-                              padding: EdgeInsets.all(20),
-                              child: Center(
-                                child: Text(
-                                  'Belum ada data yang tersedia.',
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-
-                        return Column(
-                          children: [
-                            Card(
-                              child: ListTile(
-                                leading: const Icon(
-                                  Icons.cloud_done,
-                                  color: Colors.green,
-                                  size: 32,
-                                ),
-                                title: const Text(
-                                  'Koneksi ke server berhasil',
-                                ),
-                                subtitle: Text(
-                                  'Jumlah data: ${courses.length}',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics:
-                                  const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: layarLebar ? 2 : 1,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                mainAxisExtent: 135,
-                              ),
-                              itemCount: courses.length,
-                              itemBuilder: (context, index) {
-                                final Course course = courses[index];
-
-                                final int nomor =
-                                    course.id ?? index + 1;
-
-                                final String judul =
-                                    judulIndonesia[nomor] ??
-                                        course.title;
-
-                                return Card(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        CircleAvatar(
-                                          child: Text('$nomor'),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Materi $nomor',
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleMedium
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Expanded(
-                                                child: Text(
-                                                  judul,
-                                                  maxLines: 3,
-                                                  overflow: TextOverflow
-                                                      .ellipsis,
-                                                ),
-                                              ),
-                                              const Text(
-                                                'Sumber: REST API',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                        },
+                      );
+                    },
+                  );
+                },
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }

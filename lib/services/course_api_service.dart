@@ -6,7 +6,7 @@ class CourseApiService {
   static const String apiUrl =
       'https://jsonplaceholder.typicode.com/posts';
 
-  // Mengambil daftar course menggunakan HTTP GET.
+  // HTTP GET: mengambil daftar course.
   Future<List<Course>> fetchCourses() async {
     final response = await http.get(
       Uri.parse(apiUrl),
@@ -28,7 +28,7 @@ class CourseApiService {
     }
   }
 
-  // Membuat course baru menggunakan HTTP POST.
+  // HTTP POST: membuat course baru.
   Future<Course> createCourse(Course course) async {
     final response = await http.post(
       Uri.parse(apiUrl),
@@ -40,13 +40,30 @@ class CourseApiService {
 
     if (response.statusCode == 200 ||
         response.statusCode == 201) {
-      final Map<String, dynamic> jsonResponse =
-          jsonDecode(response.body) as Map<String, dynamic>;
-
-      return Course.fromJson(jsonResponse);
+      return Course.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     } else {
       throw Exception(
         'Gagal membuat course: ${response.statusCode}',
+      );
+    }
+  }
+
+  // HTTP PUT: memperbarui course berdasarkan ID.
+  Future<void> updateCourse(int id, Course course) async {
+    final response = await http.put(
+      Uri.parse('$apiUrl/$id'),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(course.toJson()),
+    );
+
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300) {
+      throw Exception(
+        'Gagal memperbarui course: ${response.statusCode}',
       );
     }
   }
