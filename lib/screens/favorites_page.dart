@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_ui_fundamentals/main.dart';
 import 'package:provider/provider.dart';

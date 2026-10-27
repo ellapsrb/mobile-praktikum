@@ -6,11 +6,9 @@ class CourseApiService {
   static const String apiUrl =
       'https://jsonplaceholder.typicode.com/posts';
 
-  // HTTP GET: mengambil daftar course.
+  // GET: Mengambil daftar course
   Future<List<Course>> fetchCourses() async {
-    final response = await http.get(
-      Uri.parse(apiUrl),
-    );
+    final response = await http.get(Uri.parse(apiUrl));
 
     if (response.statusCode == 200) {
       final List<dynamic> jsonList =
@@ -21,14 +19,14 @@ class CourseApiService {
           item as Map<String, dynamic>,
         );
       }).toList();
-    } else {
-      throw Exception(
-        'Gagal mengambil data: ${response.statusCode}',
-      );
     }
+
+    throw Exception(
+      'Gagal mengambil data: ${response.statusCode}',
+    );
   }
 
-  // HTTP POST: membuat course baru.
+  // POST: Menambahkan course
   Future<Course> createCourse(Course course) async {
     final response = await http.post(
       Uri.parse(apiUrl),
@@ -43,14 +41,14 @@ class CourseApiService {
       return Course.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>,
       );
-    } else {
-      throw Exception(
-        'Gagal membuat course: ${response.statusCode}',
-      );
     }
+
+    throw Exception(
+      'Gagal membuat course: ${response.statusCode}',
+    );
   }
 
-  // HTTP PUT: memperbarui course berdasarkan ID.
+  // PUT: Memperbarui course
   Future<void> updateCourse(int id, Course course) async {
     final response = await http.put(
       Uri.parse('$apiUrl/$id'),
@@ -64,6 +62,20 @@ class CourseApiService {
         response.statusCode >= 300) {
       throw Exception(
         'Gagal memperbarui course: ${response.statusCode}',
+      );
+    }
+  }
+
+  // DELETE: Menghapus course
+  Future<void> deleteCourse(int id) async {
+    final response = await http.delete(
+      Uri.parse('$apiUrl/$id'),
+    );
+
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300) {
+      throw Exception(
+        'Gagal menghapus course: ${response.statusCode}',
       );
     }
   }
