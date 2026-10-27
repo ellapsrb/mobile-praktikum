@@ -41,6 +41,15 @@ class _DashboardPageState extends State<DashboardPage> {
 
   late Future<List<Course>> coursesFuture;
 
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  final TextEditingController _codeController =
+      TextEditingController();
+  final TextEditingController _titleController =
+      TextEditingController();
+  final TextEditingController _creditsController =
+      TextEditingController();
+
   final Map<int, String> judulIndonesia = {
     1: 'Panduan Membuat Program dan Mengelola Data',
     2: 'Pengenalan Konsep Dasar Pemrograman',
@@ -60,10 +69,179 @@ class _DashboardPageState extends State<DashboardPage> {
     coursesFuture = apiService.fetchCourses();
   }
 
+  @override
+  void dispose() {
+    _codeController.dispose();
+    _titleController.dispose();
+    _creditsController.dispose();
+    super.dispose();
+  }
+
   void muatUlangData() {
     setState(() {
       coursesFuture = apiService.fetchCourses();
     });
+  }
+
+  // Menampilkan form untuk membuat course baru.
+  void tampilkanFormCourse() {
+    _codeController.clear();
+    _titleController.clear();
+    _creditsController.clear();
+    _formKey.currentState?.reset();
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        bool sedangMenyimpan = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Tambah Course'),
+              content: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: _codeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Kode Course',
+                          hintText: 'Contoh: PTI101',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null ||
+                              value.trim().isEmpty) {
+                            return 'Kode course wajib diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _titleController,
+                        decoration: const InputDecoration(
+                          labelText: 'Judul Course',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null ||
+                              value.trim().isEmpty) {
+                            return 'Judul course wajib diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _creditsController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Credits / SKS',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null ||
+                              value.trim().isEmpty) {
+                            return 'Credits wajib diisi';
+                          }
+
+                          final int? credits =
+                              int.tryParse(value.trim());
+
+                          if (credits == null) {
+                            return 'Credits harus berupa angka bulat';
+                          }
+
+                          if (credits <= 0) {
+                            return 'Credits harus lebih dari 0';
+                          }
+
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: sedangMenyimpan
+                      ? null
+                      : () => Navigator.pop(dialogContext),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: sedangMenyimpan
+                      ? null
+                      : () async {
+                          if (!_formKey.currentState!.validate()) {
+                            return;
+                          }
+
+                          setDialogState(() {
+                            sedangMenyimpan = true;
+                          });
+
+                          final Course course = Course(
+                            code: _codeController.text.trim(),
+                            title: _titleController.text.trim(),
+                            credits: int.parse(
+                              _creditsController.text.trim(),
+                            ),
+                            status: 'active',
+                            userId: 1,
+                          );
+
+                          try {
+                            await apiService.createCourse(course);
+
+                            if (!mounted) return;
+
+                            Navigator.pop(dialogContext);
+
+                            muatUlangData();
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Permintaan POST berhasil dikirim!',
+                                ),
+                              ),
+                            );
+                          } catch (e) {
+                            setDialogState(() {
+                              sedangMenyimpan = false;
+                            });
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Gagal menambahkan course: $e',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                  child: sedangMenyimpan
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('Simpan'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -74,6 +252,11 @@ class _DashboardPageState extends State<DashboardPage> {
         backgroundColor:
             Theme.of(context).colorScheme.primaryContainer,
         actions: [
+          IconButton(
+            onPressed: tampilkanFormCourse,
+            icon: const Icon(Icons.add),
+            tooltip: 'Tambah course',
+          ),
           IconButton(
             onPressed: muatUlangData,
             icon: const Icon(Icons.refresh),
@@ -93,7 +276,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Identitas mahasiswa
+                    // Identitas mahasiswa.
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(20),
@@ -134,23 +317,19 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
                     Text(
                       'Daftar Data dari REST API',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-
                     const SizedBox(height: 8),
-
                     const Text(
                       'Data berikut diambil dari server menggunakan '
                       'HTTP GET.',
                     ),
-
                     const SizedBox(height: 16),
 
+                    // Menampilkan status permintaan GET.
                     FutureBuilder<List<Course>>(
                       future: coursesFuture,
                       builder: (context, snapshot) {
@@ -225,9 +404,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 8),
-
                             GridView.builder(
                               shrinkWrap: true,
                               physics:
@@ -248,7 +425,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
                                 final String judul =
                                     judulIndonesia[nomor] ??
-                                        'Materi Pembelajaran $nomor';
+                                        course.title;
 
                                 return Card(
                                   child: Padding(
@@ -281,8 +458,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                                 child: Text(
                                                   judul,
                                                   maxLines: 3,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
+                                                  overflow: TextOverflow
+                                                      .ellipsis,
                                                 ),
                                               ),
                                               const Text(
