@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import '../models/course.dart';
 
 class CourseApiService {
-  static const String apiUrl =
-      'https://jsonplaceholder.typicode.com/posts';
+ static const String apiUrl =
+    'https://jsonplaceholder.typicode.com/posts';
 
   Future<List<Course>> fetchCourses() async {
     final response = await http.get(Uri.parse(apiUrl));
