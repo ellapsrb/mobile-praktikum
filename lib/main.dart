@@ -44,9 +44,7 @@ class CoursePage extends StatefulWidget {
 }
 
 class _CoursePageState extends State<CoursePage> {
-  final CourseRepository repository =
-      CourseRepository(CourseService());
-
+  late final CourseRepository repository;
   late Future<List<Course>> coursesFuture;
 
   final String studentName = 'Tina Ellina Wati';
@@ -55,7 +53,9 @@ class _CoursePageState extends State<CoursePage> {
   @override
   void initState() {
     super.initState();
-    refreshCourses();
+
+    repository = CourseRepository(CourseService());
+    coursesFuture = repository.getCourses();
   }
 
   void refreshCourses() {
@@ -64,34 +64,24 @@ class _CoursePageState extends State<CoursePage> {
     });
   }
 
-  Future<void> showCourseForm({Course? course}) async {
+  Future<void> showCourseForm() async {
     final formKey = GlobalKey<FormState>();
 
-    final codeController = TextEditingController(
-      text: course?.code ?? '',
-    );
+    final codeController = TextEditingController();
+    final titleController = TextEditingController();
+    final creditsController = TextEditingController();
 
-    final titleController = TextEditingController(
-      text: course?.title ?? '',
-    );
+    String status = 'planned';
+    bool isSaving = false;
 
-    final creditsController = TextEditingController(
-      text: course?.credits.toString() ?? '',
-    );
-
-    String status = course?.status ?? 'planned';
-
-    final result = await showDialog<bool>(
+    await showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(
-                course == null
-                    ? 'Tambah Mata Kuliah'
-                    : 'Edit Mata Kuliah',
-              ),
+              title: const Text('Tambah Mata Kuliah'),
               content: SingleChildScrollView(
                 child: Form(
                   key: formKey,
@@ -102,36 +92,46 @@ class _CoursePageState extends State<CoursePage> {
                         controller: codeController,
                         decoration: const InputDecoration(
                           labelText: 'Kode Mata Kuliah',
+                          hintText: 'Contoh: PTI104',
+                          border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
+                          if (value == null ||
+                              value.trim().isEmpty) {
                             return 'Kode wajib diisi';
                           }
                           return null;
                         },
                       ),
+                      const SizedBox(height: 12),
                       TextFormField(
                         controller: titleController,
                         decoration: const InputDecoration(
                           labelText: 'Nama Mata Kuliah',
+                          border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Nama wajib diisi';
+                          if (value == null ||
+                              value.trim().isEmpty) {
+                            return 'Nama mata kuliah wajib diisi';
                           }
                           return null;
                         },
                       ),
+                      const SizedBox(height: 12),
                       TextFormField(
                         controller: creditsController,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
                           labelText: 'Jumlah SKS',
+                          border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          final credits = int.tryParse(value ?? '');
+                          final credits =
+                              int.tryParse(value ?? '');
 
-                          if (credits == null || credits < 1) {
+                          if (credits == null ||
+                              credits < 1) {
                             return 'Masukkan jumlah SKS yang valid';
                           }
 
@@ -143,6 +143,7 @@ class _CoursePageState extends State<CoursePage> {
                         value: status,
                         decoration: const InputDecoration(
                           labelText: 'Status',
+                          border: OutlineInputBorder(),
                         ),
                         items: const [
                           DropdownMenuItem(
@@ -172,128 +173,93 @@ class _CoursePageState extends State<CoursePage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(dialogContext, false);
-                  },
+                  onPressed: isSaving
+                      ? null
+                      : () {
+                          Navigator.pop(dialogContext);
+                        },
                   child: const Text('Batal'),
                 ),
                 FilledButton(
-                  onPressed: () {
-                    if (formKey.currentState!.validate()) {
-                      Navigator.pop(dialogContext, true);
-                    }
-                  },
-                  child: const Text('Simpan'),
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!
+                              .validate()) {
+                            return;
+                          }
+
+                          setDialogState(() {
+                            isSaving = true;
+                          });
+
+                          final course = Course(
+                            code: codeController.text.trim(),
+                            title: titleController.text.trim(),
+                            credits: int.parse(
+                              creditsController.text.trim(),
+                            ),
+                            status: status,
+                          );
+
+                          try {
+                            await repository.createCourse(course);
+
+                            if (!dialogContext.mounted) {
+                              return;
+                            }
+
+                            Navigator.pop(dialogContext, true);
+                          } catch (error) {
+                            setDialogState(() {
+                              isSaving = false;
+                            });
+
+                            ScaffoldMessenger.of(
+                              dialogContext,
+                            ).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Gagal menyimpan data: $error',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('Simpan'),
                 ),
               ],
             );
           },
         );
       },
-    );
-
-    if (result != true || !mounted) {
+    ).then((_) {
       codeController.dispose();
       titleController.dispose();
       creditsController.dispose();
-      return;
-    }
-
-    final newCourse = Course(
-      id: course?.id,
-      code: codeController.text.trim(),
-      title: titleController.text.trim(),
-      credits: int.parse(creditsController.text.trim()),
-      status: status,
-    );
-
-    codeController.dispose();
-    titleController.dispose();
-    creditsController.dispose();
-
-    try {
-      if (course == null) {
-        await repository.createCourse(newCourse);
-      } else {
-        await repository.updateCourse(
-          course.id!,
-          newCourse,
-        );
+    }).then((_) {
+      if (mounted) {
+        refreshCourses();
       }
-
-      if (!mounted) return;
-
-      refreshCourses();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            course == null
-                ? 'Mata kuliah berhasil ditambahkan'
-                : 'Mata kuliah berhasil diperbarui',
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal menyimpan data: $error'),
-        ),
-      );
-    }
+    });
   }
 
-  Future<void> confirmDelete(Course course) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Hapus Mata Kuliah'),
-          content: Text(
-            'Yakin ingin menghapus ${course.title}?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, false);
-              },
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, true);
-              },
-              child: const Text('Hapus'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await repository.deleteCourse(course.id!);
-
-      if (!mounted) return;
-
-      refreshCourses();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mata kuliah berhasil dihapus'),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal menghapus data: $error'),
-        ),
-      );
+  Color getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return Colors.green;
+      case 'done':
+        return Colors.blue;
+      default:
+        return Colors.orange;
     }
   }
 
@@ -302,17 +268,18 @@ class _CoursePageState extends State<CoursePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Learning Dashboard'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor:
+            Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
+            tooltip: 'Refresh data',
             onPressed: refreshCourses,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Muat ulang',
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showCourseForm(),
+        onPressed: showCourseForm,
         icon: const Icon(Icons.add),
         label: const Text('Tambah Course'),
       ),
@@ -320,11 +287,19 @@ class _CoursePageState extends State<CoursePage> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            color: Colors.indigo.withValues(alpha: 0.08),
+            padding: const EdgeInsets.all(20),
+            color: Colors.indigo.withAlpha(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text(
+                  'Student Profile',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.indigo,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   studentName,
                   style: const TextStyle(
@@ -334,9 +309,9 @@ class _CoursePageState extends State<CoursePage> {
                 ),
                 const SizedBox(height: 4),
                 Text('NIM: $studentId'),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 const Text(
-                  'Data mata kuliah dari Supabase',
+                  'Daftar mata kuliah dari Supabase',
                 ),
               ],
             ),
@@ -389,16 +364,19 @@ class _CoursePageState extends State<CoursePage> {
 
                 if (courses.isEmpty) {
                   return const Center(
-                    child: Text(
-                      'Belum ada mata kuliah.',
-                    ),
+                    child: Text('Belum ada mata kuliah.'),
                   );
                 }
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    refreshCourses();
-                    await coursesFuture;
+                    final newFuture = repository.getCourses();
+
+                    setState(() {
+                      coursesFuture = newFuture;
+                    });
+
+                    await newFuture;
                   },
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(
@@ -412,11 +390,18 @@ class _CoursePageState extends State<CoursePage> {
                       final course = courses[index];
 
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: const EdgeInsets.only(
+                          bottom: 12,
+                        ),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.all(12),
+                          contentPadding:
+                              const EdgeInsets.all(16),
                           leading: CircleAvatar(
-                            child: Text('${course.credits}'),
+                            backgroundColor: Colors.indigo,
+                            foregroundColor: Colors.white,
+                            child: Text(
+                              '${course.credits}',
+                            ),
                           ),
                           title: Text(
                             course.title,
@@ -425,45 +410,44 @@ class _CoursePageState extends State<CoursePage> {
                             ),
                           ),
                           subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              '${course.code}\n'
-                              'SKS: ${course.credits}\n'
-                              'Status: ${course.status}',
+                            padding:
+                                const EdgeInsets.only(top: 8),
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text('Kode: ${course.code}'),
+                                Text(
+                                  'SKS: ${course.credits}',
+                                ),
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: getStatusColor(
+                                      course.status,
+                                    ).withAlpha(25),
+                                    borderRadius:
+                                        BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    course.status,
+                                    style: TextStyle(
+                                      color: getStatusColor(
+                                        course.status,
+                                      ),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           isThreeLine: true,
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'edit') {
-                                showCourseForm(course: course);
-                              } else if (value == 'delete') {
-                                confirmDelete(course);
-                              }
-                            },
-                            itemBuilder: (context) => const [
-                              PopupMenuItem(
-                                value: 'edit',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.edit),
-                                    SizedBox(width: 8),
-                                    Text('Edit'),
-                                  ],
-                                ),
-                              ),
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.delete),
-                                    SizedBox(width: 8),
-                                    Text('Hapus'),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
                       );
                     },

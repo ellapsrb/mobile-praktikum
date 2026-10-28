@@ -4,6 +4,7 @@ import '../models/course.dart';
 class CourseService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
+  // GET: Mengambil semua course
   Future<List<Course>> loadCourses() async {
     final data = await _supabase
         .from('courses')
@@ -17,5 +18,12 @@ class CourseService {
           ),
         )
         .toList();
+  }
+
+  // INSERT: Menambahkan course baru
+  Future<void> createCourse(Course course) async {
+    await _supabase
+        .from('courses')
+        .insert(course.toJson());
   }
 }

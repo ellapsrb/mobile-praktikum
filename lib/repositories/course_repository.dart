@@ -11,18 +11,8 @@ class CourseRepository {
     return courseService.loadCourses();
   }
 
-  // CREATE
-  Future<Course> createCourse(Course course) {
+  // INSERT
+  Future<void> createCourse(Course course) {
     return courseService.createCourse(course);
-  }
-
-  // UPDATE
-  Future<void> updateCourse(int id, Course course) {
-    return courseService.updateCourse(id, course);
-  }
-
-  // DELETE
-  Future<void> deleteCourse(int id) {
-    return courseService.deleteCourse(id);
   }
 }
