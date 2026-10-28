@@ -1,0 +1,26 @@
+[33ma7508c0[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m Tambahkan error handling dan security hardening dasar
+[33m8e25548[m Selesaikan Course Data Manager CRUD terintegrasi
+[33m3099de2[m Tambahkan delete course di Supabase
+[33ma0d8290[m Tambahkan update course di Supabase
+[33m74f128b[m Tambahkan insert course ke Supabase
+[33maef2479[m Baca data courses dari Supabase database
+[33mef98987[m Dokumentasikan schema database Supabase
+[33mc0e58bb[m Konfigurasikan Supabase client untuk backend database
+[33made420d[m Refactor REST access menggunakan repository pattern
+[33maa3a146[m Tambahkan delete course melalui HTTP DELETE
+[33m1a5c33e[m Tambahkan update course melalui HTTP PUT atau PATCH
+[33m99d6438[m Tambahkan create course melalui HTTP POST
+[33m13b42fb[m Tambahkan loading empty error dan retry state
+[33m383f0a4[m Tambahkan model Course dan JSON mapping
+[33me62e5de[m Implementasikan HTTP GET dan parsing response
+[33m115d011[m Dokumentasikan endpoint REST dan struktur JSON
+[33m49703ba[m Siapkan project untuk integrasi REST API
+[33m29c5f14[m Refactor struktur folder aplikasi
+[33m370d338[m Kelola async state loading success error
+[33me15ee00[m Tambahkan repository sebagai abstraksi data
+[33mdc16a5c[m Pisahkan data source ke CourseService
+[33mc5ef389[m Tambahkan model Course dan parsing JSON
+[33m7927f64[m Gunakan watch read dan Consumer secara tepat
+[33m09c2077[m Eksperimen ValueNotifier untuk state sederhana
+[33m854daf3[m Selesaikan responsive course explorer
+[33m05cec04[m Simpan proyek awal perkuliahan

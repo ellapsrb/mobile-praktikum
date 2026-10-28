@@ -1,50 +1,62 @@
-# flutter_ui_fundamentals
+# Flutter REST API dan Supabase
 
-Project Flutter untuk praktikum Pemrograman Mobile.
+## Deskripsi Aplikasi
+Aplikasi ini merupakan project praktikum Pemrograman Mobile Pertemuan 7 yang mempelajari integrasi REST API, backend service, dan database menggunakan Flutter.
+
+Aplikasi dikembangkan untuk menampilkan dan mengelola data mata kuliah serta mempelajari proses pengambilan data, pengolahan JSON, dan operasi CRUD.
 
 ## Identitas Mahasiswa
-
 - Nama: Tina Ellina Wati
 - NIM: 2415051043
 
-## Tahap 1 — Membaca REST Endpoint dan JSON
+## Teknologi yang Digunakan
+- Flutter
+- Dart
+- REST API
+- Supabase
+- Git dan GitHub
 
-### Informasi Endpoint
+## Fitur
+- Mengambil data dari API/backend.
+- Mengubah respons JSON menjadi model Dart.
+- Menampilkan status loading, data, dan error.
+- Menambahkan data mata kuliah.
+- Mengubah data mata kuliah.
+- Menghapus data mata kuliah.
+- Menghubungkan aplikasi dengan database Supabase.
 
-- URL Endpoint: https://jsonplaceholder.typicode.com/posts/1
-- HTTP Method: GET
-- Status Code: 200 OK
-- Resource: posts
+## Struktur Arsitektur
+- `models/`: model data mata kuliah.
+- `services/`: komunikasi dengan REST API atau Supabase.
+- `repositories/`: perantara antara sumber data dan aplikasi.
+- `providers/`: pengelolaan state aplikasi.
+- `screens/`: halaman antarmuka aplikasi.
+- `widgets/`: komponen antarmuka yang dapat digunakan kembali.
 
-### Struktur Response JSON
+## Cara Menjalankan Aplikasi
+1. Pastikan Flutter dan Dart sudah terpasang.
+2. Clone repository ini.
+3. Buka folder project melalui terminal.
+4. Jalankan perintah:
 
-Endpoint tersebut menghasilkan data dalam format JSON dengan empat field utama:
+   ```bash
+   flutter pub get
+   ```
 
-1. `userId`: ID pengguna yang membuat postingan.
-2. `id`: ID postingan.
-3. `title`: Judul postingan.
-4. `body`: Isi postingan.
+5. Periksa kode menggunakan:
 
-### Contoh Response JSON
+   ```bash
+   dart analyze
+   ```
 
-    {
-      "userId": 1,
-      "id": 1,
-      "title": "sunt aut facere repellat provident occaecati excepturi optio reprehenderit",
-      "body": "quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto"
-    }
+6. Jalankan aplikasi di Chrome:
 
-### Catatan
+   ```bash
+   flutter run -d chrome
+   ```
 
-REST API digunakan untuk menghubungkan aplikasi dengan server melalui HTTP request. Pada tahap ini, metode GET digunakan untuk mengambil data dari server.
+## Backend
+Project ini menggunakan REST API untuk mempelajari komunikasi HTTP dan pengolahan JSON, serta Supabase sebagai backend database untuk pengelolaan data mata kuliah.
 
-Response yang diterima berisi status code dan data dalam format JSON. Status code 200 OK menandakan bahwa permintaan berhasil diproses.
-
-JSONPlaceholder digunakan sebagai REST API contoh untuk keperluan praktikum dan pengujian.
-
-## Referensi Flutter
-
-- https://docs.flutter.dev/get-started/learn-flutter
-- https://docs.flutter.dev/get-started/codelab
-- https://docs.flutter.dev/reference/learning-resources
-- https://docs.flutter.dev/
+## Keamanan
+Credential server dan `service_role key` tidak boleh dimasukkan ke source code aplikasi Flutter atau diunggah ke repository publik. Akses database harus mengikuti konfigurasi keamanan dan kebijakan Row Level Security (RLS) yang sesuai.
