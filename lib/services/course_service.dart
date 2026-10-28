@@ -1,22 +1,50 @@
-import 'dart:convert';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../models/course.dart';
 
 class CourseService {
+  final SupabaseClient _supabase = Supabase.instance.client;
+
+  // GET: Mengambil semua course
   Future<List<Course>> loadCourses() async {
-    final jsonString = await rootBundle.loadString(
-      'assets/data/student_data.json',
-    );
+    final data = await _supabase
+        .from('courses')
+        .select()
+        .order('id', ascending: true);
 
-    final data = jsonDecode(jsonString) as Map<String, dynamic>;
-    final list = data['courses'] as List<dynamic>;
-
-    return list
+    return (data as List)
         .map(
           (item) => Course.fromJson(
-            item as Map<String, dynamic>,
+            Map<String, dynamic>.from(item as Map),
           ),
         )
         .toList();
+  }
+
+  // POST: Menambahkan course
+  Future<Course> createCourse(Course course) async {
+    final data = await _supabase
+        .from('courses')
+        .insert(course.toJson())
+        .select()
+        .single();
+
+    return Course.fromJson(data);
+  }
+
+  // UPDATE: Memperbarui course
+  Future<void> updateCourse(int id, Course course) async {
+    await _supabase
+        .from('courses')
+        .update(course.toJson())
+        .eq('id', id);
+  }
+
+  // DELETE: Menghapus course
+  Future<void> deleteCourse(int id) async {
+    await _supabase
+        .from('courses')
+        .delete()
+        .eq('id', id);
   }
 }

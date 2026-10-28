@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models/course.dart';
-import 'services/course_api_service.dart';
+import 'services/course_service.dart';
 import 'repositories/course_repository.dart';
 import 'supabase_config.dart';
-
-const String studentName = 'Tina Ellina Wati';
-const String studentId = '2415051043';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,222 +31,228 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const DashboardPage(),
+      home: const CoursePage(),
     );
   }
 }
 
-class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
+class CoursePage extends StatefulWidget {
+  const CoursePage({super.key});
 
   @override
-  State<DashboardPage> createState() => _DashboardPageState();
+  State<CoursePage> createState() => _CoursePageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> {
-  late final CourseRepository repository;
+class _CoursePageState extends State<CoursePage> {
+  final CourseRepository repository =
+      CourseRepository(CourseService());
+
   late Future<List<Course>> coursesFuture;
+
+  final String studentName = 'Tina Ellina Wati';
+  final String studentId = '2415051043';
 
   @override
   void initState() {
     super.initState();
-
-    repository = CourseRepository(CourseApiService());
-    coursesFuture = repository.getCourses();
+    refreshCourses();
   }
 
-  void reloadCourses() {
+  void refreshCourses() {
     setState(() {
       coursesFuture = repository.getCourses();
     });
   }
 
-  String getCourseCode(Course course, int index) {
-    if (course.code.isNotEmpty) {
-      return course.code;
-    }
-
-    return 'MK-${(index + 1).toString().padLeft(2, '0')}';
-  }
-
-  String getCourseTitle(Course course) {
-    const translations = {
-      'sunt aut facere repellat provident occaecati excepturi optio reprehenderit':
-          'Pengantar Pemrograman',
-      'qui est esse': 'Dasar-Dasar Informatika',
-      'ea molestias quasi exercitationem repellat qui ipsa sit aut':
-          'Pemrograman Berorientasi Objek',
-      'eum et est occaecati': 'Struktur Data',
-      'nesciunt quas odio': 'Basis Data',
-    };
-
-    return translations[course.title] ?? course.title;
-  }
-
   Future<void> showCourseForm({Course? course}) async {
     final formKey = GlobalKey<FormState>();
+
     final codeController = TextEditingController(
       text: course?.code ?? '',
     );
+
     final titleController = TextEditingController(
       text: course?.title ?? '',
     );
+
     final creditsController = TextEditingController(
-      text: course?.credits.toString() ?? '3',
-    );
-    final statusController = TextEditingController(
-      text: course?.status ?? 'active',
+      text: course?.credits.toString() ?? '',
     );
 
-    final isEditing = course != null;
+    String status = course?.status ?? 'planned';
 
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(
-            isEditing ? 'Edit Course' : 'Tambah Course',
-          ),
-          content: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: codeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Kode Mata Kuliah',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Kode mata kuliah wajib diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama Mata Kuliah',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Nama mata kuliah wajib diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: creditsController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Jumlah SKS',
-                    ),
-                    validator: (value) {
-                      if (value == null ||
-                          int.tryParse(value) == null ||
-                          int.parse(value) <= 0) {
-                        return 'Masukkan jumlah SKS yang valid';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: statusController,
-                    decoration: const InputDecoration(
-                      labelText: 'Status',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Status wajib diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                course == null
+                    ? 'Tambah Mata Kuliah'
+                    : 'Edit Mata Kuliah',
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, false);
-              },
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState!.validate()) {
-                  Navigator.pop(dialogContext, true);
-                }
-              },
-              child: const Text('Simpan'),
-            ),
-          ],
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: codeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Kode Mata Kuliah',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Kode wajib diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                      TextFormField(
+                        controller: titleController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama Mata Kuliah',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Nama wajib diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                      TextFormField(
+                        controller: creditsController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Jumlah SKS',
+                        ),
+                        validator: (value) {
+                          final credits = int.tryParse(value ?? '');
+
+                          if (credits == null || credits < 1) {
+                            return 'Masukkan jumlah SKS yang valid';
+                          }
+
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: status,
+                        decoration: const InputDecoration(
+                          labelText: 'Status',
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'planned',
+                            child: Text('Planned'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'active',
+                            child: Text('Active'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'done',
+                            child: Text('Done'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() {
+                              status = value;
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext, false);
+                  },
+                  child: const Text('Batal'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (formKey.currentState!.validate()) {
+                      Navigator.pop(dialogContext, true);
+                    }
+                  },
+                  child: const Text('Simpan'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
 
-    if (result == true && mounted) {
-      final newCourse = Course(
-        id: course?.id,
-        userId: course?.userId ?? 1,
-        code: codeController.text.trim(),
-        title: titleController.text.trim(),
-        credits: int.parse(creditsController.text.trim()),
-        status: statusController.text.trim(),
-      );
-
-      try {
-        if (isEditing) {
-          if (course.id == null) {
-            throw Exception('ID course tidak tersedia');
-          }
-
-          await repository.updateCourse(course.id!, newCourse);
-        } else {
-          await repository.createCourse(newCourse);
-        }
-
-        if (!mounted) return;
-
-        reloadCourses();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isEditing
-                  ? 'Course berhasil diperbarui'
-                  : 'Course berhasil ditambahkan',
-            ),
-          ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal menyimpan course: $e'),
-          ),
-        );
-      }
+    if (result != true || !mounted) {
+      codeController.dispose();
+      titleController.dispose();
+      creditsController.dispose();
+      return;
     }
+
+    final newCourse = Course(
+      id: course?.id,
+      code: codeController.text.trim(),
+      title: titleController.text.trim(),
+      credits: int.parse(creditsController.text.trim()),
+      status: status,
+    );
 
     codeController.dispose();
     titleController.dispose();
     creditsController.dispose();
-    statusController.dispose();
+
+    try {
+      if (course == null) {
+        await repository.createCourse(newCourse);
+      } else {
+        await repository.updateCourse(
+          course.id!,
+          newCourse,
+        );
+      }
+
+      if (!mounted) return;
+
+      refreshCourses();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            course == null
+                ? 'Mata kuliah berhasil ditambahkan'
+                : 'Mata kuliah berhasil diperbarui',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal menyimpan data: $error'),
+        ),
+      );
+    }
   }
 
-  Future<void> deleteCourse(Course course) async {
-    final confirm = await showDialog<bool>(
+  Future<void> confirmDelete(Course course) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Hapus Course'),
+          title: const Text('Hapus Mata Kuliah'),
           content: Text(
-            'Yakin ingin menghapus "${course.title}"?',
+            'Yakin ingin menghapus ${course.title}?',
           ),
           actions: [
             TextButton(
@@ -262,9 +265,6 @@ class _DashboardPageState extends State<DashboardPage> {
               onPressed: () {
                 Navigator.pop(dialogContext, true);
               },
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
               child: const Text('Hapus'),
             ),
           ],
@@ -272,35 +272,26 @@ class _DashboardPageState extends State<DashboardPage> {
       },
     );
 
-    if (confirm != true) return;
-
-    if (course.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ID course tidak tersedia'),
-        ),
-      );
-      return;
-    }
+    if (confirmed != true) return;
 
     try {
       await repository.deleteCourse(course.id!);
 
       if (!mounted) return;
 
-      reloadCourses();
+      refreshCourses();
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Course berhasil dihapus'),
+          content: Text('Mata kuliah berhasil dihapus'),
         ),
       );
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal menghapus course: $e'),
+          content: Text('Gagal menghapus data: $error'),
         ),
       );
     }
@@ -311,54 +302,45 @@ class _DashboardPageState extends State<DashboardPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Learning Dashboard'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
-            onPressed: reloadCourses,
+            onPressed: refreshCourses,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Muat ulang data',
+            tooltip: 'Muat ulang',
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => showCourseForm(),
+        icon: const Icon(Icons.add),
+        label: const Text('Tambah Course'),
       ),
       body: Column(
         children: [
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.indigo.shade50,
-              borderRadius: BorderRadius.circular(16),
-            ),
+            padding: const EdgeInsets.all(16),
+            color: Colors.indigo.withValues(alpha: 0.08),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Identitas Mahasiswa',
-                  style: TextStyle(
-                    fontSize: 18,
+                Text(
+                  studentName,
+                  style: const TextStyle(
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text('Nama: $studentName'),
+                const SizedBox(height: 4),
                 Text('NIM: $studentId'),
+                const SizedBox(height: 8),
+                const Text(
+                  'Data mata kuliah dari Supabase',
+                ),
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Daftar Mata Kuliah',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
           Expanded(
             child: FutureBuilder<List<Course>>(
               future: coursesFuture,
@@ -383,13 +365,18 @@ class _DashboardPageState extends State<DashboardPage> {
                             color: Colors.red,
                           ),
                           const SizedBox(height: 12),
+                          const Text(
+                            'Gagal mengambil data dari Supabase.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
                           Text(
-                            'Gagal mengambil data:\n${snapshot.error}',
+                            '${snapshot.error}',
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 12),
                           FilledButton(
-                            onPressed: reloadCourses,
+                            onPressed: refreshCourses,
                             child: const Text('Coba Lagi'),
                           ),
                         ],
@@ -402,87 +389,90 @@ class _DashboardPageState extends State<DashboardPage> {
 
                 if (courses.isEmpty) {
                   return const Center(
-                    child: Text('Belum ada mata kuliah'),
+                    child: Text(
+                      'Belum ada mata kuliah.',
+                    ),
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: courses.length,
-                  itemBuilder: (context, index) {
-                    final course = courses[index];
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: Colors.indigo.shade100,
-                              child: const Icon(
-                                Icons.menu_book,
-                                color: Colors.indigo,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    getCourseTitle(course),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Kode: ${getCourseCode(course, index)}',
-                                  ),
-                                  Text(
-                                    'SKS: ${course.credits == 0 ? 3 : course.credits}',
-                                  ),
-                                  Text('Status: ${course.status}'),
-                                ],
-                              ),
-                            ),
-                            PopupMenuButton<String>(
-                              onSelected: (value) {
-                                if (value == 'edit') {
-                                  showCourseForm(course: course);
-                                } else if (value == 'delete') {
-                                  deleteCourse(course);
-                                }
-                              },
-                              itemBuilder: (context) => const [
-                                PopupMenuItem(
-                                  value: 'edit',
-                                  child: Text('Edit'),
-                                ),
-                                PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Hapus'),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    refreshCourses();
+                    await coursesFuture;
                   },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(
+                      12,
+                      12,
+                      12,
+                      90,
+                    ),
+                    itemCount: courses.length,
+                    itemBuilder: (context, index) {
+                      final course = courses[index];
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(12),
+                          leading: CircleAvatar(
+                            child: Text('${course.credits}'),
+                          ),
+                          title: Text(
+                            course.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              '${course.code}\n'
+                              'SKS: ${course.credits}\n'
+                              'Status: ${course.status}',
+                            ),
+                          ),
+                          isThreeLine: true,
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                showCourseForm(course: course);
+                              } else if (value == 'delete') {
+                                confirmDelete(course);
+                              }
+                            },
+                            itemBuilder: (context) => const [
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit),
+                                    SizedBox(width: 8),
+                                    Text('Edit'),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete),
+                                    SizedBox(width: 8),
+                                    Text('Hapus'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
             ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showCourseForm(),
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah Course'),
       ),
     );
   }
