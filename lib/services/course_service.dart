@@ -4,7 +4,7 @@ import '../models/course.dart';
 class CourseService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // READ: mengambil data course
+  // READ
   Future<List<Course>> loadCourses() async {
     final data = await _supabase
         .from('courses')
@@ -20,12 +20,12 @@ class CourseService {
         .toList();
   }
 
-  // INSERT: menambahkan course
+  // INSERT
   Future<void> createCourse(Course course) async {
     await _supabase.from('courses').insert(course.toJson());
   }
 
-  // UPDATE: mengubah course berdasarkan id
+  // UPDATE
   Future<void> updateCourse(Course course) async {
     if (course.id == null) {
       throw Exception('ID course tidak ditemukan.');
@@ -35,5 +35,13 @@ class CourseService {
         .from('courses')
         .update(course.toJson())
         .eq('id', course.id!);
+  }
+
+  // DELETE
+  Future<void> deleteCourse(int id) async {
+    await _supabase
+        .from('courses')
+        .delete()
+        .eq('id', id);
   }
 }
