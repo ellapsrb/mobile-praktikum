@@ -1,3 +1,4 @@
+
 import 'package:flutter/foundation.dart';
 
 import '../models/course.dart';
@@ -17,19 +18,19 @@ class CourseProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   Future<void> loadCourses() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  _isLoading = true;
+  _errorMessage = null;
+  notifyListeners();
 
-    try {
-      _courses = await repository.getCourses();
-    } catch (e) {
-      _errorMessage = 'Gagal memuat data mata kuliah: $e';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  try {
+    _courses = await repository.getCourses();
+  } catch (e) {
+    _errorMessage = 'Gagal memuat data mata kuliah.';
+  } finally {
+    _isLoading = false;
+    notifyListeners();
   }
+}
 
   Future<bool> createCourse(Course course) async {
     try {
