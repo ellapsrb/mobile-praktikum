@@ -64,6 +64,7 @@ class _CoursePageState extends State<CoursePage> {
     });
   }
 
+  // FORM TAMBAH COURSE
   Future<void> showCourseForm() async {
     final formKey = GlobalKey<FormState>();
 
@@ -74,182 +75,388 @@ class _CoursePageState extends State<CoursePage> {
     String status = 'planned';
     bool isSaving = false;
 
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Tambah Mata Kuliah'),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: codeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Kode Mata Kuliah',
-                          hintText: 'Contoh: PTI104',
-                          border: OutlineInputBorder(),
+    try {
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: const Text('Tambah Mata Kuliah'),
+                content: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          controller: codeController,
+                          decoration: const InputDecoration(
+                            labelText: 'Kode Mata Kuliah',
+                            hintText: 'Contoh: PTI104',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            if (value == null ||
+                                value.trim().isEmpty) {
+                              return 'Kode wajib diisi';
+                            }
+                            return null;
+                          },
                         ),
-                        validator: (value) {
-                          if (value == null ||
-                              value.trim().isEmpty) {
-                            return 'Kode wajib diisi';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Nama Mata Kuliah',
-                          border: OutlineInputBorder(),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: titleController,
+                          decoration: const InputDecoration(
+                            labelText: 'Nama Mata Kuliah',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            if (value == null ||
+                                value.trim().isEmpty) {
+                              return 'Nama mata kuliah wajib diisi';
+                            }
+                            return null;
+                          },
                         ),
-                        validator: (value) {
-                          if (value == null ||
-                              value.trim().isEmpty) {
-                            return 'Nama mata kuliah wajib diisi';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: creditsController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Jumlah SKS',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          final credits =
-                              int.tryParse(value ?? '');
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: creditsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Jumlah SKS',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            final credits =
+                                int.tryParse(value ?? '');
 
-                          if (credits == null ||
-                              credits < 1) {
-                            return 'Masukkan jumlah SKS yang valid';
-                          }
-
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        value: status,
-                        decoration: const InputDecoration(
-                          labelText: 'Status',
-                          border: OutlineInputBorder(),
+                            if (credits == null || credits < 1) {
+                              return 'Masukkan SKS yang valid';
+                            }
+                            return null;
+                          },
                         ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'planned',
-                            child: Text('Planned'),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: status,
+                          decoration: const InputDecoration(
+                            labelText: 'Status',
+                            border: OutlineInputBorder(),
                           ),
-                          DropdownMenuItem(
-                            value: 'active',
-                            child: Text('Active'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'done',
-                            child: Text('Done'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setDialogState(() {
-                              status = value;
-                            });
-                          }
-                        },
-                      ),
-                    ],
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'planned',
+                              child: Text('Planned'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'active',
+                              child: Text('Active'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'done',
+                              child: Text('Done'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setDialogState(() {
+                                status = value;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSaving
-                      ? null
-                      : () {
-                          Navigator.pop(dialogContext);
-                        },
-                  child: const Text('Batal'),
-                ),
-                FilledButton(
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          if (!formKey.currentState!
-                              .validate()) {
-                            return;
-                          }
-
-                          setDialogState(() {
-                            isSaving = true;
-                          });
-
-                          final course = Course(
-                            code: codeController.text.trim(),
-                            title: titleController.text.trim(),
-                            credits: int.parse(
-                              creditsController.text.trim(),
-                            ),
-                            status: status,
-                          );
-
-                          try {
-                            await repository.createCourse(course);
-
-                            if (!dialogContext.mounted) {
+                actions: [
+                  TextButton(
+                    onPressed: isSaving
+                        ? null
+                        : () => Navigator.pop(dialogContext, false),
+                    child: const Text('Batal'),
+                  ),
+                  FilledButton(
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) {
                               return;
                             }
 
-                            Navigator.pop(dialogContext, true);
-                          } catch (error) {
                             setDialogState(() {
-                              isSaving = false;
+                              isSaving = true;
                             });
 
-                            ScaffoldMessenger.of(
-                              dialogContext,
-                            ).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Gagal menyimpan data: $error',
-                                ),
+                            final course = Course(
+                              code: codeController.text.trim(),
+                              title: titleController.text.trim(),
+                              credits: int.parse(
+                                creditsController.text.trim(),
                               ),
+                              status: status,
                             );
-                          }
-                        },
-                  child: isSaving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text('Simpan'),
-                ),
-              ],
-            );
-          },
+
+                            try {
+                              await repository.createCourse(course);
+
+                              if (!dialogContext.mounted) return;
+
+                              Navigator.pop(dialogContext, true);
+                            } catch (error) {
+                              setDialogState(() {
+                                isSaving = false;
+                              });
+
+                              ScaffoldMessenger.of(dialogContext)
+                                  .showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Gagal menambahkan course: $error',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                    child: isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text('Simpan'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+
+      if (result == true && mounted) {
+        refreshCourses();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Course berhasil ditambahkan'),
+          ),
         );
-      },
-    ).then((_) {
+      }
+    } finally {
       codeController.dispose();
       titleController.dispose();
       creditsController.dispose();
-    }).then((_) {
-      if (mounted) {
+    }
+  }
+
+  // FORM EDIT COURSE
+  Future<void> showEditCourseForm(Course course) async {
+    if (course.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ID course tidak ditemukan'),
+        ),
+      );
+      return;
+    }
+
+    final formKey = GlobalKey<FormState>();
+
+    // Form otomatis terisi data course sebelumnya.
+    final titleController = TextEditingController(
+      text: course.title,
+    );
+    final creditsController = TextEditingController(
+      text: course.credits.toString(),
+    );
+
+    String status = course.status.toLowerCase();
+
+    if (!['planned', 'active', 'done'].contains(status)) {
+      status = 'planned';
+    }
+
+    bool isSaving = false;
+
+    try {
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: const Text('Edit Mata Kuliah'),
+                content: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          initialValue: course.code,
+                          readOnly: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Kode Mata Kuliah',
+                            border: OutlineInputBorder(),
+                            helperText: 'Kode tidak diubah pada tahap ini',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: titleController,
+                          decoration: const InputDecoration(
+                            labelText: 'Nama Mata Kuliah',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            if (value == null ||
+                                value.trim().isEmpty) {
+                              return 'Nama mata kuliah wajib diisi';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: creditsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Jumlah SKS',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            final credits =
+                                int.tryParse(value ?? '');
+
+                            if (credits == null || credits < 1) {
+                              return 'Masukkan SKS yang valid';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: status,
+                          decoration: const InputDecoration(
+                            labelText: 'Status',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'planned',
+                              child: Text('Planned'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'active',
+                              child: Text('Active'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'done',
+                              child: Text('Done'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setDialogState(() {
+                                status = value;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: isSaving
+                        ? null
+                        : () => Navigator.pop(dialogContext, false),
+                    child: const Text('Batal'),
+                  ),
+                  FilledButton(
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) {
+                              return;
+                            }
+
+                            setDialogState(() {
+                              isSaving = true;
+                            });
+
+                            // ID lama dipakai untuk menentukan baris
+                            // yang akan diperbarui di Supabase.
+                            final updatedCourse = Course(
+                              id: course.id,
+                              code: course.code,
+                              title: titleController.text.trim(),
+                              credits: int.parse(
+                                creditsController.text.trim(),
+                              ),
+                              status: status,
+                              createdAt: course.createdAt,
+                            );
+
+                            try {
+                              await repository.updateCourse(
+                                updatedCourse,
+                              );
+
+                              if (!dialogContext.mounted) return;
+
+                              Navigator.pop(dialogContext, true);
+                            } catch (error) {
+                              setDialogState(() {
+                                isSaving = false;
+                              });
+
+                              ScaffoldMessenger.of(dialogContext)
+                                  .showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Gagal memperbarui course: $error',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                    child: isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text('Simpan Perubahan'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+
+      if (result == true && mounted) {
         refreshCourses();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Course berhasil diperbarui'),
+          ),
+        );
       }
-    });
+    } finally {
+      titleController.dispose();
+      creditsController.dispose();
+    }
   }
 
   Color getStatusColor(String status) {
@@ -394,14 +601,11 @@ class _CoursePageState extends State<CoursePage> {
                           bottom: 12,
                         ),
                         child: ListTile(
-                          contentPadding:
-                              const EdgeInsets.all(16),
+                          contentPadding: const EdgeInsets.all(16),
                           leading: CircleAvatar(
                             backgroundColor: Colors.indigo,
                             foregroundColor: Colors.white,
-                            child: Text(
-                              '${course.credits}',
-                            ),
+                            child: Text('${course.credits}'),
                           ),
                           title: Text(
                             course.title,
@@ -410,20 +614,16 @@ class _CoursePageState extends State<CoursePage> {
                             ),
                           ),
                           subtitle: Padding(
-                            padding:
-                                const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.only(top: 8),
                             child: Column(
                               crossAxisAlignment:
                                   CrossAxisAlignment.start,
                               children: [
                                 Text('Kode: ${course.code}'),
-                                Text(
-                                  'SKS: ${course.credits}',
-                                ),
+                                Text('SKS: ${course.credits}'),
                                 const SizedBox(height: 6),
                                 Container(
-                                  padding:
-                                      const EdgeInsets.symmetric(
+                                  padding: const EdgeInsets.symmetric(
                                     horizontal: 10,
                                     vertical: 4,
                                   ),
@@ -448,6 +648,18 @@ class _CoursePageState extends State<CoursePage> {
                             ),
                           ),
                           isThreeLine: true,
+
+                          // Tombol Edit di setiap course.
+                          trailing: IconButton(
+                            tooltip: 'Edit course',
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              color: Colors.indigo,
+                            ),
+                            onPressed: () {
+                              showEditCourseForm(course);
+                            },
+                          ),
                         ),
                       );
                     },

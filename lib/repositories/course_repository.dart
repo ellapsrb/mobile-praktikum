@@ -6,13 +6,15 @@ class CourseRepository {
 
   final CourseService courseService;
 
-  // GET
   Future<List<Course>> getCourses() {
     return courseService.loadCourses();
   }
 
-  // INSERT
   Future<void> createCourse(Course course) {
     return courseService.createCourse(course);
+  }
+
+  Future<void> updateCourse(Course course) {
+    return courseService.updateCourse(course);
   }
 }
