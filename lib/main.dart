@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models/course.dart';
 import 'repositories/course_repository.dart';
 import 'services/course_service.dart';
+import 'services/profile_service.dart';
 import 'supabase_config.dart';
 
 Future<void> main() async {
@@ -34,6 +35,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// ==================== COURSE PAGE ====================
+
 class CoursePage extends StatefulWidget {
   const CoursePage({super.key});
 
@@ -43,9 +46,14 @@ class CoursePage extends StatefulWidget {
 
 class _CoursePageState extends State<CoursePage> {
   final CourseRepository repository = CourseRepository(CourseService());
+  final ProfileService profileService = ProfileService();
 
   List<Course> courses = [];
+  Map<String, dynamic>? profile;
+
   bool isLoading = true;
+  bool isProfileLoading = true;
+
   String? errorMessage;
 
   final String studentName = 'Tina Ellina Wati';
@@ -55,6 +63,29 @@ class _CoursePageState extends State<CoursePage> {
   void initState() {
     super.initState();
     refreshCourses();
+    loadProfile();
+  }
+
+  // Mengambil profil pengguna dari Supabase.
+  Future<void> loadProfile() async {
+    try {
+      final result = await profileService.getMyProfile();
+
+      if (!mounted) return;
+
+      setState(() {
+        profile = result;
+        isProfileLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        isProfileLoading = false;
+      });
+
+      debugPrint('Gagal mengambil profil: $error');
+    }
   }
 
   // READ: Mengambil data mata kuliah dari Supabase.
@@ -535,7 +566,7 @@ class _CoursePageState extends State<CoursePage> {
       ),
       body: Column(
         children: [
-          // Identitas mahasiswa.
+          // Profil pengguna dari Supabase.
           Container(
             width: double.infinity,
             margin: const EdgeInsets.all(16),
@@ -548,12 +579,18 @@ class _CoursePageState extends State<CoursePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Identitas Mahasiswa',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  'Profil Pengguna',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
-                Text('Nama: $studentName'),
-                Text('NIM: $studentId'),
+                const SizedBox(height: 12),
+                if (isProfileLoading)
+                  const Center(child: CircularProgressIndicator())
+                else ...[
+                  Text('Nama: ${profile?['name'] ?? studentName}'),
+                  Text('Email: ${profile?['email'] ?? '-'}'),
+                  Text('NIM: $studentId'),
+                  Text('Role: ${profile?['role'] ?? 'seeker'}'),
+                ],
               ],
             ),
           ),
@@ -682,7 +719,8 @@ class _CoursePageState extends State<CoursePage> {
   }
 }
 
-// AUTH GATE: Menentukan halaman berdasarkan status login Supabase.
+// ==================== AUTH GATE ====================
+
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -702,7 +740,8 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-// LOGIN PAGE
+// ==================== LOGIN & REGISTER ====================
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -714,6 +753,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _loading = false;
   bool _showRegister = false;
 
@@ -726,6 +766,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() => _loading = true);
 
     try {
@@ -735,10 +776,12 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on AuthException catch (error) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Login gagal. Periksa koneksi internet.')),
       );
@@ -800,8 +843,9 @@ class _LoginPageState extends State<LoginPage> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Password wajib diisi';
+                    }
                     if (_showRegister && value.length < 6) {
                       return 'Password minimal 6 karakter';
                     }
@@ -850,6 +894,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() => _loading = true);
 
     try {
@@ -859,14 +904,15 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (!mounted) return;
+
       if (response.session != null) {
-        // Jika konfirmasi email dinonaktifkan, AuthGate otomatis masuk ke CoursePage.
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Registrasi berhasil!')));
       } else {
         setState(() => _showRegister = false);
         _passwordController.clear();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -877,10 +923,12 @@ class _LoginPageState extends State<LoginPage> {
       }
     } on AuthException catch (error) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Registrasi gagal. Periksa koneksi internet.'),
