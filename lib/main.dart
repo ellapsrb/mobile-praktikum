@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'firebase_options.dart';
 import 'models/course.dart';
 import 'repositories/course_repository.dart';
 import 'services/course_service.dart';
@@ -10,6 +12,10 @@ import 'supabase_config.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Inisialisasi Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Inisialisasi Supabase
   await Supabase.initialize(
     url: SupabaseConfig.supabaseUrl,
     publishableKey: SupabaseConfig.supabaseAnonKey,
@@ -376,7 +382,6 @@ class _CoursePageState extends State<CoursePage> {
         ],
       ),
 
-      // Tambah Course hanya untuk Owner dan Admin.
       floatingActionButton: RoleGuard(
         role: userRole,
         allowed: const ['owner', 'admin'],
@@ -509,8 +514,6 @@ class _CoursePageState extends State<CoursePage> {
                 ),
               ),
               isThreeLine: true,
-
-              // Tombol Edit dan Hapus hanya untuk Owner/Admin.
               trailing: RoleGuard(
                 role: userRole,
                 allowed: const ['owner', 'admin'],
