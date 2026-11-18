@@ -1,5 +1,7 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'firebase_options.dart';
@@ -10,13 +12,35 @@ import 'services/profile_service.dart';
 import 'services/notification_service.dart';
 import 'supabase_config.dart';
 
+final GlobalKey<NavigatorState> navigatorKey =
+    GlobalKey<NavigatorState>();
+
+final GlobalKey<ScaffoldMessengerState> messengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
+// BACKGROUND NOTIFICATION
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(
+    RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  debugPrint('Background message received: ${message.messageId}');
+}
+
+// MAIN
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inisialisasi Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  // Inisialisasi Supabase
+  FirebaseMessaging.onBackgroundMessage(
+    firebaseMessagingBackgroundHandler,
+  );
+
   await Supabase.initialize(
     url: SupabaseConfig.supabaseUrl,
     publishableKey: SupabaseConfig.supabaseAnonKey,
@@ -25,6 +49,7 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
+// MY APP
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -33,8 +58,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Learning Dashboard',
+      navigatorKey: navigatorKey,
+      scaffoldMessengerKey: messengerKey,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.indigo,
+        ),
         useMaterial3: true,
       ),
       home: const AuthGate(),
@@ -42,8 +71,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// ==================== ROLE GUARD ====================
-
+// ROLE GUARD
 class RoleGuard extends StatelessWidget {
   const RoleGuard({
     super.key,
@@ -58,12 +86,13 @@ class RoleGuard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return allowed.contains(role) ? child : const SizedBox.shrink();
+    return allowed.contains(role)
+        ? child
+        : const SizedBox.shrink();
   }
 }
 
-// ==================== COURSE PAGE ====================
-
+// COURSE PAGE
 class CoursePage extends StatefulWidget {
   const CoursePage({super.key});
 
@@ -72,7 +101,9 @@ class CoursePage extends StatefulWidget {
 }
 
 class _CoursePageState extends State<CoursePage> {
-  final CourseRepository repository = CourseRepository(CourseService());
+  final CourseRepository repository =
+      CourseRepository(CourseService());
+
   final ProfileService profileService = ProfileService();
 
   List<Course> courses = [];
@@ -85,9 +116,8 @@ class _CoursePageState extends State<CoursePage> {
   final String studentName = 'Tina Ellina Wati';
   final String studentId = '2415051043';
 
-  String get userRole => profile?['role']?.toString() ?? 'seeker';
-
-  bool get canManageCourses => userRole == 'owner' || userRole == 'admin';
+  String get userRole =>
+      profile?['role']?.toString() ?? 'seeker';
 
   @override
   void initState() {
@@ -97,23 +127,36 @@ class _CoursePageState extends State<CoursePage> {
     _setupNotifications();
   }
 
-  // ==================== NOTIFICATION & FCM TOKEN ====================
-
+  // NOTIFICATION SETUP
   Future<void> _setupNotifications() async {
-    // Meminta izin notifikasi
-    await NotificationService.instance.requestPermission();
+    try {
+      await NotificationService.instance.requestPermission();
+      await NotificationService.instance.getToken();
 
-    // Mendapatkan FCM Token
-    await NotificationService.instance.getToken();
+      NotificationService.instance.listenTokenRefresh((newToken) {
+        debugPrint('Token baru berhasil diterima.');
+      });
 
-    // Mendengarkan perubahan FCM Token
-    NotificationService.instance.listenTokenRefresh((newToken) {
-      debugPrint('Token baru berhasil diterima.');
-    });
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        final notification = message.notification;
+
+        if (notification == null) return;
+
+        final title = notification.title ?? 'Notifikasi';
+        final body = notification.body ?? '';
+
+        var showSnackBar = messengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('''$title: $body")'''
+          ),
+        );
+      });
+    } catch (error) {
+      debugPrint('Notification setup gagal: $error');
+    }
   }
 
-  // ==================== PROFILE ====================
-
+  // LOAD PROFILE
   Future<void> loadProfile() async {
     try {
       final result = await profileService.getMyProfile();
@@ -135,8 +178,7 @@ class _CoursePageState extends State<CoursePage> {
     }
   }
 
-  // ==================== READ COURSE ====================
-
+  // LOAD COURSES
   Future<void> refreshCourses() async {
     setState(() {
       isLoading = true;
@@ -162,12 +204,13 @@ class _CoursePageState extends State<CoursePage> {
     }
   }
 
-  // ==================== CREATE & UPDATE ====================
-
+  // CREATE & UPDATE COURSE
   Future<void> showCourseForm({Course? course}) async {
     final formKey = GlobalKey<FormState>();
-    final codeController = TextEditingController(text: course?.code ?? '');
-    final titleController = TextEditingController(text: course?.title ?? '');
+    final codeController =
+        TextEditingController(text: course?.code ?? '');
+    final titleController =
+        TextEditingController(text: course?.title ?? '');
     final creditsController = TextEditingController(
       text: course?.credits.toString() ?? '',
     );
@@ -184,7 +227,9 @@ class _CoursePageState extends State<CoursePage> {
           builder: (context, setDialogState) {
             return AlertDialog(
               title: Text(
-                isEditing ? 'Edit Mata Kuliah' : 'Tambah Mata Kuliah',
+                isEditing
+                    ? 'Edit Mata Kuliah'
+                    : 'Tambah Mata Kuliah',
               ),
               content: SingleChildScrollView(
                 child: Form(
@@ -201,8 +246,8 @@ class _CoursePageState extends State<CoursePage> {
                         ),
                         validator: (value) =>
                             value == null || value.trim().isEmpty
-                            ? 'Kode wajib diisi'
-                            : null,
+                                ? 'Kode wajib diisi'
+                                : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -213,8 +258,8 @@ class _CoursePageState extends State<CoursePage> {
                         ),
                         validator: (value) =>
                             value == null || value.trim().isEmpty
-                            ? 'Nama mata kuliah wajib diisi'
-                            : null,
+                                ? 'Nama mata kuliah wajib diisi'
+                                : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -247,11 +292,16 @@ class _CoursePageState extends State<CoursePage> {
                             value: 'planned',
                             child: Text('Planned'),
                           ),
-                          DropdownMenuItem(value: 'done', child: Text('Done')),
+                          DropdownMenuItem(
+                            value: 'done',
+                            child: Text('Done'),
+                          ),
                         ],
                         onChanged: (value) {
                           if (value != null) {
-                            setDialogState(() => selectedStatus = value);
+                            setDialogState(() {
+                              selectedStatus = value;
+                            });
                           }
                         },
                       ),
@@ -274,7 +324,9 @@ class _CoursePageState extends State<CoursePage> {
                             return;
                           }
 
-                          setDialogState(() => isSaving = true);
+                          setDialogState(() {
+                            isSaving = true;
+                          });
 
                           try {
                             if (isEditing) {
@@ -289,10 +341,14 @@ class _CoursePageState extends State<CoursePage> {
                                 createdAt: course.createdAt,
                               );
 
-                              await repository.updateCourse(updatedCourse);
+                              await repository.updateCourse(
+                                updatedCourse,
+                              );
                             } else {
                               final newCourse = Course(
-                                code: codeController.text.trim().toUpperCase(),
+                                code: codeController.text
+                                    .trim()
+                                    .toUpperCase(),
                                 title: titleController.text.trim(),
                                 credits: int.parse(
                                   creditsController.text.trim(),
@@ -300,7 +356,9 @@ class _CoursePageState extends State<CoursePage> {
                                 status: selectedStatus,
                               );
 
-                              await repository.createCourse(newCourse);
+                              await repository.createCourse(
+                                newCourse,
+                              );
                             }
 
                             if (!dialogContext.mounted) return;
@@ -310,7 +368,8 @@ class _CoursePageState extends State<CoursePage> {
 
                             if (!mounted) return;
 
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messengerKey.currentState
+                                ?.showSnackBar(
                               SnackBar(
                                 content: Text(
                                   isEditing
@@ -320,16 +379,23 @@ class _CoursePageState extends State<CoursePage> {
                               ),
                             );
                           } catch (error) {
-                            setDialogState(() => isSaving = false);
+                            setDialogState(() {
+                              isSaving = false;
+                            });
 
                             if (!dialogContext.mounted) return;
 
-                            ScaffoldMessenger.of(dialogContext).showSnackBar(
-                              SnackBar(content: Text('Gagal: $error')),
+                            ScaffoldMessenger.of(dialogContext)
+                                .showSnackBar(
+                              SnackBar(
+                                content: Text('Gagal: $error'),
+                              ),
                             );
                           }
                         },
-                  child: Text(isSaving ? 'Menyimpan...' : 'Simpan'),
+                  child: Text(
+                    isSaving ? 'Menyimpan...' : 'Simpan',
+                  ),
                 ),
               ],
             );
@@ -343,8 +409,7 @@ class _CoursePageState extends State<CoursePage> {
     creditsController.dispose();
   }
 
-  // ==================== DELETE ====================
-
+  // DELETE COURSE
   Future<void> confirmDeleteCourse(Course course) async {
     if (course.id == null) return;
 
@@ -352,10 +417,13 @@ class _CoursePageState extends State<CoursePage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Hapus Mata Kuliah?'),
-        content: Text('Yakin ingin menghapus "${course.title}"?'),
+        content: Text(
+          'Yakin ingin menghapus "${course.title}"?',
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () =>
+                Navigator.pop(dialogContext, false),
             child: const Text('Batal'),
           ),
           FilledButton(
@@ -363,7 +431,8 @@ class _CoursePageState extends State<CoursePage> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            onPressed: () => Navigator.pop(dialogContext, true),
+            onPressed: () =>
+                Navigator.pop(dialogContext, true),
             child: const Text('Hapus'),
           ),
         ],
@@ -378,26 +447,30 @@ class _CoursePageState extends State<CoursePage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mata kuliah berhasil dihapus.')),
+      messengerKey.currentState?.showSnackBar(
+        const SnackBar(
+          content: Text('Mata kuliah berhasil dihapus.'),
+        ),
       );
     } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menghapus mata kuliah: $error')),
+      messengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text('Gagal menghapus mata kuliah: $error'),
+        ),
       );
     }
   }
 
-  // ==================== UI ====================
-
+  // UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Learning Dashboard'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor:
+            Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
             tooltip: 'Refresh data',
@@ -424,13 +497,14 @@ class _CoursePageState extends State<CoursePage> {
       ),
       body: Column(
         children: [
-          // PROFILE
           Container(
             width: double.infinity,
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
+              color: Theme.of(context)
+                  .colorScheme
+                  .primaryContainer,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -438,14 +512,23 @@ class _CoursePageState extends State<CoursePage> {
               children: [
                 const Text(
                   'Profil Pengguna',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 if (isProfileLoading)
-                  const Center(child: CircularProgressIndicator())
+                  const Center(
+                    child: CircularProgressIndicator(),
+                  )
                 else ...[
-                  Text('Nama: ${profile?['name'] ?? studentName}'),
-                  Text('Email: ${profile?['email'] ?? '-'}'),
+                  Text(
+                    'Nama: ${profile?['name'] ?? studentName}',
+                  ),
+                  Text(
+                    'Email: ${profile?['email'] ?? '-'}',
+                  ),
                   Text('NIM: $studentId'),
                   Text('Role: $userRole'),
                 ],
@@ -458,7 +541,10 @@ class _CoursePageState extends State<CoursePage> {
               alignment: Alignment.centerLeft,
               child: Text(
                 'Daftar Mata Kuliah',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -471,7 +557,9 @@ class _CoursePageState extends State<CoursePage> {
 
   Widget _buildCourseContent() {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
     }
 
     if (errorMessage != null) {
@@ -481,11 +569,18 @@ class _CoursePageState extends State<CoursePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Colors.red,
+              ),
               const SizedBox(height: 12),
               const Text('Gagal memuat data mata kuliah.'),
               const SizedBox(height: 8),
-              Text(errorMessage!, textAlign: TextAlign.center),
+              Text(
+                errorMessage!,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: refreshCourses,
@@ -505,9 +600,15 @@ class _CoursePageState extends State<CoursePage> {
           physics: const AlwaysScrollableScrollPhysics(),
           children: const [
             SizedBox(height: 100),
-            Icon(Icons.menu_book_outlined, size: 64, color: Colors.grey),
+            Icon(
+              Icons.menu_book_outlined,
+              size: 64,
+              color: Colors.grey,
+            ),
             SizedBox(height: 16),
-            Center(child: Text('Belum ada mata kuliah.')),
+            Center(
+              child: Text('Belum ada mata kuliah.'),
+            ),
           ],
         ),
       );
@@ -517,7 +618,11 @@ class _CoursePageState extends State<CoursePage> {
       onRefresh: refreshCourses,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(left: 12, right: 12, bottom: 90),
+        padding: const EdgeInsets.only(
+          left: 12,
+          right: 12,
+          bottom: 90,
+        ),
         itemCount: courses.length,
         itemBuilder: (context, index) {
           final course = courses[index];
@@ -525,10 +630,14 @@ class _CoursePageState extends State<CoursePage> {
           return Card(
             margin: const EdgeInsets.symmetric(vertical: 6),
             child: ListTile(
-              leading: CircleAvatar(child: Text('${course.credits}')),
+              leading: CircleAvatar(
+                child: Text('${course.credits}'),
+              ),
               title: Text(
                 course.title,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               subtitle: Padding(
                 padding: const EdgeInsets.only(top: 6),
@@ -554,12 +663,17 @@ class _CoursePageState extends State<CoursePage> {
                         Icons.edit_outlined,
                         color: Colors.indigo,
                       ),
-                      onPressed: () => showCourseForm(course: course),
+                      onPressed: () =>
+                          showCourseForm(course: course),
                     ),
                     IconButton(
                       tooltip: 'Hapus course',
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () => confirmDeleteCourse(course),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.red,
+                      ),
+                      onPressed: () =>
+                          confirmDeleteCourse(course),
                     ),
                   ],
                 ),
@@ -572,8 +686,7 @@ class _CoursePageState extends State<CoursePage> {
   }
 }
 
-// ==================== AUTH GATE ====================
-
+// AUTH GATE
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -593,8 +706,7 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-// ==================== LOGIN & REGISTER ====================
-
+// LOGIN & REGISTER
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -617,12 +729,13 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // ==================== LOGIN ====================
-
+  // LOGIN
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+    });
 
     try {
       await Supabase.instance.client.auth.signInWithPassword(
@@ -631,29 +744,38 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on AuthException catch (error) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      messengerKey.currentState?.showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
     } catch (_) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login gagal. Periksa koneksi internet.')),
+      messengerKey.currentState?.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Login gagal. Periksa koneksi internet.',
+          ),
+        ),
       );
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
-  // ==================== REGISTER ====================
-
+  // REGISTER
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+    });
 
     try {
-      final response = await Supabase.instance.client.auth.signUp(
+      final response =
+          await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
@@ -661,45 +783,57 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
 
       if (response.session != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Registrasi berhasil!')));
+        messengerKey.currentState?.showSnackBar(
+          const SnackBar(
+            content: Text('Registrasi berhasil!'),
+          ),
+        );
       } else {
-        setState(() => _showRegister = false);
+        setState(() {
+          _showRegister = false;
+        });
+
         _passwordController.clear();
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        messengerKey.currentState?.showSnackBar(
           const SnackBar(
             content: Text(
-              'Registrasi berhasil. Silakan cek email untuk konfirmasi, lalu login.',
+              'Registrasi berhasil. Silakan cek email '
+              'untuk konfirmasi, lalu login.',
             ),
           ),
         );
       }
     } on AuthException catch (error) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      messengerKey.currentState?.showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
     } catch (_) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
+      messengerKey.currentState?.showSnackBar(
         const SnackBar(
-          content: Text('Registrasi gagal. Periksa koneksi internet.'),
+          content: Text(
+            'Registrasi gagal. Periksa koneksi internet.',
+          ),
         ),
       );
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
-  // ==================== LOGIN / REGISTER UI ====================
-
+  // LOGIN / REGISTER UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_showRegister ? 'Register' : 'Login')),
+      appBar: AppBar(
+        title: Text(_showRegister ? 'Register' : 'Login'),
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -709,13 +843,17 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Icon(
-                  _showRegister ? Icons.person_add_alt_1 : Icons.lock_open,
+                  _showRegister
+                      ? Icons.person_add_alt_1
+                      : Icons.lock_open,
                   size: 72,
                   color: Colors.indigo,
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _showRegister ? 'Buat Akun Baru' : 'Selamat Datang',
+                  _showRegister
+                      ? 'Buat Akun Baru'
+                      : 'Selamat Datang',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 24,
@@ -765,15 +903,21 @@ class _LoginPageState extends State<LoginPage> {
                   onPressed: _loading
                       ? null
                       : _showRegister
-                      ? _register
-                      : _login,
+                          ? _register
+                          : _login,
                   child: _loading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
                         )
-                      : Text(_showRegister ? 'Register' : 'Login'),
+                      : Text(
+                          _showRegister
+                              ? 'Register'
+                              : 'Login',
+                        ),
                 ),
                 const SizedBox(height: 12),
                 TextButton(
