@@ -7,6 +7,7 @@ import 'models/course.dart';
 import 'repositories/course_repository.dart';
 import 'services/course_service.dart';
 import 'services/profile_service.dart';
+import 'services/notification_service.dart';
 import 'supabase_config.dart';
 
 Future<void> main() async {
@@ -93,7 +94,25 @@ class _CoursePageState extends State<CoursePage> {
     super.initState();
     refreshCourses();
     loadProfile();
+    _setupNotifications();
   }
+
+  // ==================== NOTIFICATION & FCM TOKEN ====================
+
+  Future<void> _setupNotifications() async {
+    // Meminta izin notifikasi
+    await NotificationService.instance.requestPermission();
+
+    // Mendapatkan FCM Token
+    await NotificationService.instance.getToken();
+
+    // Mendengarkan perubahan FCM Token
+    NotificationService.instance.listenTokenRefresh((newToken) {
+      debugPrint('Token baru berhasil diterima.');
+    });
+  }
+
+  // ==================== PROFILE ====================
 
   Future<void> loadProfile() async {
     try {
@@ -115,6 +134,8 @@ class _CoursePageState extends State<CoursePage> {
       debugPrint('Gagal mengambil profil: $error');
     }
   }
+
+  // ==================== READ COURSE ====================
 
   Future<void> refreshCourses() async {
     setState(() {
@@ -141,7 +162,8 @@ class _CoursePageState extends State<CoursePage> {
     }
   }
 
-  // CREATE & UPDATE
+  // ==================== CREATE & UPDATE ====================
+
   Future<void> showCourseForm({Course? course}) async {
     final formKey = GlobalKey<FormState>();
     final codeController = TextEditingController(text: course?.code ?? '');
@@ -248,7 +270,9 @@ class _CoursePageState extends State<CoursePage> {
                   onPressed: isSaving
                       ? null
                       : () async {
-                          if (!formKey.currentState!.validate()) return;
+                          if (!formKey.currentState!.validate()) {
+                            return;
+                          }
 
                           setDialogState(() => isSaving = true);
 
@@ -280,10 +304,12 @@ class _CoursePageState extends State<CoursePage> {
                             }
 
                             if (!dialogContext.mounted) return;
+
                             Navigator.pop(dialogContext);
                             await refreshCourses();
 
                             if (!mounted) return;
+
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
@@ -297,6 +323,7 @@ class _CoursePageState extends State<CoursePage> {
                             setDialogState(() => isSaving = false);
 
                             if (!dialogContext.mounted) return;
+
                             ScaffoldMessenger.of(dialogContext).showSnackBar(
                               SnackBar(content: Text('Gagal: $error')),
                             );
@@ -316,7 +343,8 @@ class _CoursePageState extends State<CoursePage> {
     creditsController.dispose();
   }
 
-  // DELETE
+  // ==================== DELETE ====================
+
   Future<void> confirmDeleteCourse(Course course) async {
     if (course.id == null) return;
 
@@ -349,16 +377,20 @@ class _CoursePageState extends State<CoursePage> {
       await refreshCourses();
 
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Mata kuliah berhasil dihapus.')),
       );
     } catch (error) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal menghapus mata kuliah: $error')),
       );
     }
   }
+
+  // ==================== UI ====================
 
   @override
   Widget build(BuildContext context) {
@@ -381,7 +413,6 @@ class _CoursePageState extends State<CoursePage> {
           ),
         ],
       ),
-
       floatingActionButton: RoleGuard(
         role: userRole,
         allowed: const ['owner', 'admin'],
@@ -391,7 +422,6 @@ class _CoursePageState extends State<CoursePage> {
           label: const Text('Tambah Course'),
         ),
       ),
-
       body: Column(
         children: [
           // PROFILE
@@ -422,7 +452,6 @@ class _CoursePageState extends State<CoursePage> {
               ],
             ),
           ),
-
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Align(
@@ -433,7 +462,6 @@ class _CoursePageState extends State<CoursePage> {
               ),
             ),
           ),
-
           const SizedBox(height: 8),
           Expanded(child: _buildCourseContent()),
         ],
@@ -589,6 +617,8 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  // ==================== LOGIN ====================
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -601,10 +631,12 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on AuthException catch (error) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Login gagal. Periksa koneksi internet.')),
       );
@@ -612,6 +644,8 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  // ==================== REGISTER ====================
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
@@ -644,10 +678,12 @@ class _LoginPageState extends State<LoginPage> {
       }
     } on AuthException catch (error) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Registrasi gagal. Periksa koneksi internet.'),
@@ -657,6 +693,8 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  // ==================== LOGIN / REGISTER UI ====================
 
   @override
   Widget build(BuildContext context) {
@@ -697,7 +735,9 @@ class _LoginPageState extends State<LoginPage> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Email wajib diisi';
                     }
-                    if (!value.contains('@')) return 'Format email tidak valid';
+                    if (!value.contains('@')) {
+                      return 'Format email tidak valid';
+                    }
                     return null;
                   },
                 ),
