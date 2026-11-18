@@ -35,6 +35,26 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// ==================== ROLE GUARD ====================
+
+class RoleGuard extends StatelessWidget {
+  const RoleGuard({
+    super.key,
+    required this.role,
+    required this.allowed,
+    required this.child,
+  });
+
+  final String role;
+  final List<String> allowed;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return allowed.contains(role) ? child : const SizedBox.shrink();
+  }
+}
+
 // ==================== COURSE PAGE ====================
 
 class CoursePage extends StatefulWidget {
@@ -53,11 +73,14 @@ class _CoursePageState extends State<CoursePage> {
 
   bool isLoading = true;
   bool isProfileLoading = true;
-
   String? errorMessage;
 
   final String studentName = 'Tina Ellina Wati';
   final String studentId = '2415051043';
+
+  String get userRole => profile?['role']?.toString() ?? 'seeker';
+
+  bool get canManageCourses => userRole == 'owner' || userRole == 'admin';
 
   @override
   void initState() {
@@ -66,7 +89,6 @@ class _CoursePageState extends State<CoursePage> {
     loadProfile();
   }
 
-  // Mengambil profil pengguna dari Supabase.
   Future<void> loadProfile() async {
     try {
       final result = await profileService.getMyProfile();
@@ -88,7 +110,6 @@ class _CoursePageState extends State<CoursePage> {
     }
   }
 
-  // READ: Mengambil data mata kuliah dari Supabase.
   Future<void> refreshCourses() async {
     setState(() {
       isLoading = true;
@@ -114,16 +135,18 @@ class _CoursePageState extends State<CoursePage> {
     }
   }
 
-  // CREATE: Menampilkan formulir tambah mata kuliah.
-  Future<void> showCourseForm() async {
+  // CREATE & UPDATE
+  Future<void> showCourseForm({Course? course}) async {
     final formKey = GlobalKey<FormState>();
+    final codeController = TextEditingController(text: course?.code ?? '');
+    final titleController = TextEditingController(text: course?.title ?? '');
+    final creditsController = TextEditingController(
+      text: course?.credits.toString() ?? '',
+    );
 
-    final codeController = TextEditingController();
-    final titleController = TextEditingController();
-    final creditsController = TextEditingController();
-
-    String selectedStatus = 'planned';
+    String selectedStatus = course?.status ?? 'planned';
     bool isSaving = false;
+    final isEditing = course != null;
 
     await showDialog<void>(
       context: context,
@@ -132,7 +155,9 @@ class _CoursePageState extends State<CoursePage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Tambah Mata Kuliah'),
+              title: Text(
+                isEditing ? 'Edit Mata Kuliah' : 'Tambah Mata Kuliah',
+              ),
               content: SingleChildScrollView(
                 child: Form(
                   key: formKey,
@@ -141,17 +166,15 @@ class _CoursePageState extends State<CoursePage> {
                     children: [
                       TextFormField(
                         controller: codeController,
+                        readOnly: isEditing,
                         decoration: const InputDecoration(
                           labelText: 'Kode Mata Kuliah',
-                          hintText: 'Contoh: PTI104',
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Kode wajib diisi';
-                          }
-                          return null;
-                        },
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? 'Kode wajib diisi'
+                            : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -160,12 +183,10 @@ class _CoursePageState extends State<CoursePage> {
                           labelText: 'Nama Mata Kuliah',
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Nama mata kuliah wajib diisi';
-                          }
-                          return null;
-                        },
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? 'Nama mata kuliah wajib diisi'
+                            : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -177,16 +198,14 @@ class _CoursePageState extends State<CoursePage> {
                         ),
                         validator: (value) {
                           final credits = int.tryParse(value ?? '');
-
-                          if (credits == null || credits < 1) {
-                            return 'Masukkan jumlah SKS yang valid';
-                          }
-                          return null;
+                          return credits == null || credits < 1
+                              ? 'Masukkan jumlah SKS yang valid'
+                              : null;
                         },
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: selectedStatus,
+                        initialValue: selectedStatus,
                         decoration: const InputDecoration(
                           labelText: 'Status',
                           border: OutlineInputBorder(),
@@ -204,9 +223,7 @@ class _CoursePageState extends State<CoursePage> {
                         ],
                         onChanged: (value) {
                           if (value != null) {
-                            setDialogState(() {
-                              selectedStatus = value;
-                            });
+                            setDialogState(() => selectedStatus = value);
                           }
                         },
                       ),
@@ -218,60 +235,64 @@ class _CoursePageState extends State<CoursePage> {
                 TextButton(
                   onPressed: isSaving
                       ? null
-                      : () {
-                          Navigator.pop(dialogContext);
-                        },
+                      : () => Navigator.pop(dialogContext),
                   child: const Text('Batal'),
                 ),
                 FilledButton(
                   onPressed: isSaving
                       ? null
                       : () async {
-                          if (!formKey.currentState!.validate()) {
-                            return;
-                          }
+                          if (!formKey.currentState!.validate()) return;
 
-                          setDialogState(() {
-                            isSaving = true;
-                          });
+                          setDialogState(() => isSaving = true);
 
                           try {
-                            final course = Course(
-                              code: codeController.text.trim().toUpperCase(),
-                              title: titleController.text.trim(),
-                              credits: int.parse(creditsController.text.trim()),
-                              status: selectedStatus,
-                            );
+                            if (isEditing) {
+                              final updatedCourse = Course(
+                                id: course.id,
+                                code: course.code,
+                                title: titleController.text.trim(),
+                                credits: int.parse(
+                                  creditsController.text.trim(),
+                                ),
+                                status: selectedStatus,
+                                createdAt: course.createdAt,
+                              );
 
-                            await repository.createCourse(course);
+                              await repository.updateCourse(updatedCourse);
+                            } else {
+                              final newCourse = Course(
+                                code: codeController.text.trim().toUpperCase(),
+                                title: titleController.text.trim(),
+                                credits: int.parse(
+                                  creditsController.text.trim(),
+                                ),
+                                status: selectedStatus,
+                              );
+
+                              await repository.createCourse(newCourse);
+                            }
 
                             if (!dialogContext.mounted) return;
                             Navigator.pop(dialogContext);
-
                             await refreshCourses();
 
                             if (!mounted) return;
-
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              SnackBar(
                                 content: Text(
-                                  'Mata kuliah berhasil ditambahkan.',
+                                  isEditing
+                                      ? 'Mata kuliah berhasil diperbarui.'
+                                      : 'Mata kuliah berhasil ditambahkan.',
                                 ),
                               ),
                             );
                           } catch (error) {
-                            setDialogState(() {
-                              isSaving = false;
-                            });
+                            setDialogState(() => isSaving = false);
 
                             if (!dialogContext.mounted) return;
-
                             ScaffoldMessenger.of(dialogContext).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Gagal menambahkan mata kuliah: $error',
-                                ),
-                              ),
+                              SnackBar(content: Text('Gagal: $error')),
                             );
                           }
                         },
@@ -289,249 +310,44 @@ class _CoursePageState extends State<CoursePage> {
     creditsController.dispose();
   }
 
-  // UPDATE: Mengedit mata kuliah yang sudah ada.
-  Future<void> showEditCourseForm(Course course) async {
-    if (course.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ID mata kuliah tidak ditemukan.')),
-      );
-      return;
-    }
-
-    final formKey = GlobalKey<FormState>();
-
-    final titleController = TextEditingController(text: course.title);
-    final creditsController = TextEditingController(
-      text: course.credits.toString(),
-    );
-
-    String selectedStatus = course.status;
-    bool isSaving = false;
-
-    const validStatuses = ['active', 'planned', 'done'];
-
-    if (!validStatuses.contains(selectedStatus)) {
-      selectedStatus = 'planned';
-    }
-
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Edit Mata Kuliah'),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        initialValue: course.code,
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Kode Mata Kuliah',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Nama Mata Kuliah',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Nama mata kuliah wajib diisi';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: creditsController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Jumlah SKS',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          final credits = int.tryParse(value ?? '');
-
-                          if (credits == null || credits < 1) {
-                            return 'Masukkan jumlah SKS yang valid';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        value: selectedStatus,
-                        decoration: const InputDecoration(
-                          labelText: 'Status',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'active',
-                            child: Text('Active'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'planned',
-                            child: Text('Planned'),
-                          ),
-                          DropdownMenuItem(value: 'done', child: Text('Done')),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setDialogState(() {
-                              selectedStatus = value;
-                            });
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSaving
-                      ? null
-                      : () {
-                          Navigator.pop(dialogContext);
-                        },
-                  child: const Text('Batal'),
-                ),
-                FilledButton(
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          if (!formKey.currentState!.validate()) {
-                            return;
-                          }
-
-                          setDialogState(() {
-                            isSaving = true;
-                          });
-
-                          try {
-                            final updatedCourse = Course(
-                              id: course.id,
-                              code: course.code,
-                              title: titleController.text.trim(),
-                              credits: int.parse(creditsController.text.trim()),
-                              status: selectedStatus,
-                              createdAt: course.createdAt,
-                            );
-
-                            await repository.updateCourse(updatedCourse);
-
-                            if (!dialogContext.mounted) return;
-                            Navigator.pop(dialogContext);
-
-                            await refreshCourses();
-
-                            if (!mounted) return;
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Mata kuliah berhasil diperbarui.',
-                                ),
-                              ),
-                            );
-                          } catch (error) {
-                            setDialogState(() {
-                              isSaving = false;
-                            });
-
-                            if (!dialogContext.mounted) return;
-
-                            ScaffoldMessenger.of(dialogContext).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Gagal mengedit mata kuliah: $error',
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                  child: Text(isSaving ? 'Menyimpan...' : 'Simpan Perubahan'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    titleController.dispose();
-    creditsController.dispose();
-  }
-
-  // DELETE: Meminta konfirmasi sebelum menghapus mata kuliah.
+  // DELETE
   Future<void> confirmDeleteCourse(Course course) async {
-    if (course.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ID mata kuliah tidak ditemukan.')),
-      );
-      return;
-    }
+    if (course.id == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Hapus Mata Kuliah?'),
-          content: Text(
-            'Apakah kamu yakin ingin menghapus '
-            '"${course.title}" (${course.code})?',
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hapus Mata Kuliah?'),
+        content: Text('Yakin ingin menghapus "${course.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Batal'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, false);
-              },
-              child: const Text('Batal'),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
             ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                Navigator.pop(dialogContext, true);
-              },
-              child: const Text('Hapus'),
-            ),
-          ],
-        );
-      },
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
     );
 
     if (confirmed != true || !mounted) return;
 
     try {
       await repository.deleteCourse(course.id!);
-
-      if (!mounted) return;
-
       await refreshCourses();
 
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Mata kuliah "${course.title}" berhasil dihapus.'),
-        ),
+        const SnackBar(content: Text('Mata kuliah berhasil dihapus.')),
       );
     } catch (error) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal menghapus mata kuliah: $error')),
       );
@@ -559,14 +375,21 @@ class _CoursePageState extends State<CoursePage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: showCourseForm,
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah Course'),
+
+      // Tambah Course hanya untuk Owner dan Admin.
+      floatingActionButton: RoleGuard(
+        role: userRole,
+        allowed: const ['owner', 'admin'],
+        child: FloatingActionButton.extended(
+          onPressed: () => showCourseForm(),
+          icon: const Icon(Icons.add),
+          label: const Text('Tambah Course'),
+        ),
       ),
+
       body: Column(
         children: [
-          // Profil pengguna dari Supabase.
+          // PROFILE
           Container(
             width: double.infinity,
             margin: const EdgeInsets.all(16),
@@ -589,13 +412,12 @@ class _CoursePageState extends State<CoursePage> {
                   Text('Nama: ${profile?['name'] ?? studentName}'),
                   Text('Email: ${profile?['email'] ?? '-'}'),
                   Text('NIM: $studentId'),
-                  Text('Role: ${profile?['role'] ?? 'seeker'}'),
+                  Text('Role: $userRole'),
                 ],
               ],
             ),
           ),
 
-          // Judul daftar mata kuliah.
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Align(
@@ -608,8 +430,6 @@ class _CoursePageState extends State<CoursePage> {
           ),
 
           const SizedBox(height: 8),
-
-          // Isi daftar.
           Expanded(child: _buildCourseContent()),
         ],
       ),
@@ -630,10 +450,7 @@ class _CoursePageState extends State<CoursePage> {
             children: [
               const Icon(Icons.error_outline, size: 48, color: Colors.red),
               const SizedBox(height: 12),
-              const Text(
-                'Gagal memuat data mata kuliah.',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              const Text('Gagal memuat data mata kuliah.'),
               const SizedBox(height: 8),
               Text(errorMessage!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
@@ -692,24 +509,29 @@ class _CoursePageState extends State<CoursePage> {
                 ),
               ),
               isThreeLine: true,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'Edit course',
-                    icon: const Icon(Icons.edit_outlined, color: Colors.indigo),
-                    onPressed: () {
-                      showEditCourseForm(course);
-                    },
-                  ),
-                  IconButton(
-                    tooltip: 'Hapus course',
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () {
-                      confirmDeleteCourse(course);
-                    },
-                  ),
-                ],
+
+              // Tombol Edit dan Hapus hanya untuk Owner/Admin.
+              trailing: RoleGuard(
+                role: userRole,
+                allowed: const ['owner', 'admin'],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Edit course',
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: Colors.indigo,
+                      ),
+                      onPressed: () => showCourseForm(course: course),
+                    ),
+                    IconButton(
+                      tooltip: 'Hapus course',
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: () => confirmDeleteCourse(course),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -776,14 +598,57 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on AuthException catch (error) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Login gagal. Periksa koneksi internet.')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+
+    try {
+      final response = await Supabase.instance.client.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      if (response.session != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Registrasi berhasil!')));
+      } else {
+        setState(() => _showRegister = false);
+        _passwordController.clear();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Registrasi berhasil. Silakan cek email untuk konfirmasi, lalu login.',
+            ),
+          ),
+        );
+      }
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registrasi gagal. Periksa koneksi internet.'),
+        ),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -890,52 +755,5 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
-  }
-
-  Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _loading = true);
-
-    try {
-      final response = await Supabase.instance.client.auth.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      if (!mounted) return;
-
-      if (response.session != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Registrasi berhasil!')));
-      } else {
-        setState(() => _showRegister = false);
-        _passwordController.clear();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Registrasi berhasil. Silakan cek email untuk konfirmasi, lalu login.',
-            ),
-          ),
-        );
-      }
-    } on AuthException catch (error) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
-    } catch (_) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registrasi gagal. Periksa koneksi internet.'),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
   }
 }
