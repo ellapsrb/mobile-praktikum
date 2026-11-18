@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,10 +10,7 @@ const String studentId = '2415051043';
 class DetailPage extends StatelessWidget {
   final Course course;
 
-  const DetailPage({
-    super.key,
-    required this.course,
-  });
+  const DetailPage({super.key, required this.course});
 
   @override
   Widget build(BuildContext context) {
@@ -22,20 +18,14 @@ class DetailPage extends StatelessWidget {
     final isFavorite = courseState.isFavorite(course.code);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detail Mata Kuliah'),
-      ),
+      appBar: AppBar(title: const Text('Detail Mata Kuliah')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.school,
-                size: 64,
-                color: Colors.blue,
-              ),
+              const Icon(Icons.school, size: 64, color: Colors.blue),
               const SizedBox(height: 16),
               Text(
                 course.title,
@@ -55,19 +45,11 @@ class DetailPage extends StatelessWidget {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () {
-                  context
-                      .read<CourseState>()
-                      .toggleFavorite(course.code);
+                  context.read<CourseState>().toggleFavorite(course.code);
                 },
-                icon: Icon(
-                  isFavorite
-                      ? Icons.favorite
-                      : Icons.favorite_border,
-                ),
+                icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
                 label: Text(
-                  isFavorite
-                      ? 'Hapus dari Favorit'
-                      : 'Tambah ke Favorit',
+                  isFavorite ? 'Hapus dari Favorit' : 'Tambah ke Favorit',
                 ),
               ),
             ],

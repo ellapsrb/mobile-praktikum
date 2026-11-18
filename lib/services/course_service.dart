@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../models/course.dart';
 
 class CourseService {
@@ -12,11 +13,7 @@ class CourseService {
         .order('id', ascending: true);
 
     return (data as List)
-        .map(
-          (item) => Course.fromJson(
-            Map<String, dynamic>.from(item as Map),
-          ),
-        )
+        .map((item) => Course.fromJson(Map<String, dynamic>.from(item as Map)))
         .toList();
   }
 
@@ -39,9 +36,6 @@ class CourseService {
 
   // DELETE
   Future<void> deleteCourse(int id) async {
-    await _supabase
-        .from('courses')
-        .delete()
-        .eq('id', id);
+    await _supabase.from('courses').delete().eq('id', id);
   }
 }

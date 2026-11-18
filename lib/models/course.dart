@@ -29,11 +29,6 @@ class Course {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'code': code,
-      'title': title,
-      'credits': credits,
-      'status': status,
-    };
+    return {'code': code, 'title': title, 'credits': credits, 'status': status};
   }
 }

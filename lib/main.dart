@@ -11,7 +11,7 @@ Future<void> main() async {
 
   await Supabase.initialize(
     url: SupabaseConfig.supabaseUrl,
-    anonKey: SupabaseConfig.supabaseAnonKey,
+    publishableKey: SupabaseConfig.supabaseAnonKey,
   );
 
   runApp(const MyApp());
@@ -26,12 +26,10 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Learning Dashboard',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.indigo,
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      home: const CoursePage(),
+      home: const AuthGate(),
     );
   }
 }
@@ -44,8 +42,7 @@ class CoursePage extends StatefulWidget {
 }
 
 class _CoursePageState extends State<CoursePage> {
-  final CourseRepository repository =
-      CourseRepository(CourseService());
+  final CourseRepository repository = CourseRepository(CourseService());
 
   List<Course> courses = [];
   bool isLoading = true;
@@ -119,8 +116,7 @@ class _CoursePageState extends State<CoursePage> {
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          if (value == null ||
-                              value.trim().isEmpty) {
+                          if (value == null || value.trim().isEmpty) {
                             return 'Kode wajib diisi';
                           }
                           return null;
@@ -134,8 +130,7 @@ class _CoursePageState extends State<CoursePage> {
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          if (value == null ||
-                              value.trim().isEmpty) {
+                          if (value == null || value.trim().isEmpty) {
                             return 'Nama mata kuliah wajib diisi';
                           }
                           return null;
@@ -150,11 +145,9 @@ class _CoursePageState extends State<CoursePage> {
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          final credits =
-                              int.tryParse(value ?? '');
+                          final credits = int.tryParse(value ?? '');
 
-                          if (credits == null ||
-                              credits < 1) {
+                          if (credits == null || credits < 1) {
                             return 'Masukkan jumlah SKS yang valid';
                           }
                           return null;
@@ -176,10 +169,7 @@ class _CoursePageState extends State<CoursePage> {
                             value: 'planned',
                             child: Text('Planned'),
                           ),
-                          DropdownMenuItem(
-                            value: 'done',
-                            child: Text('Done'),
-                          ),
+                          DropdownMenuItem(value: 'done', child: Text('Done')),
                         ],
                         onChanged: (value) {
                           if (value != null) {
@@ -206,8 +196,7 @@ class _CoursePageState extends State<CoursePage> {
                   onPressed: isSaving
                       ? null
                       : () async {
-                          if (!formKey.currentState!
-                              .validate()) {
+                          if (!formKey.currentState!.validate()) {
                             return;
                           }
 
@@ -217,14 +206,9 @@ class _CoursePageState extends State<CoursePage> {
 
                           try {
                             final course = Course(
-                              code: codeController.text
-                                  .trim()
-                                  .toUpperCase(),
-                              title:
-                                  titleController.text.trim(),
-                              credits: int.parse(
-                                creditsController.text.trim(),
-                              ),
+                              code: codeController.text.trim().toUpperCase(),
+                              title: titleController.text.trim(),
+                              credits: int.parse(creditsController.text.trim()),
                               status: selectedStatus,
                             );
 
@@ -237,8 +221,7 @@ class _CoursePageState extends State<CoursePage> {
 
                             if (!mounted) return;
 
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(
+                            ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
                                   'Mata kuliah berhasil ditambahkan.',
@@ -252,8 +235,7 @@ class _CoursePageState extends State<CoursePage> {
 
                             if (!dialogContext.mounted) return;
 
-                            ScaffoldMessenger.of(dialogContext)
-                                .showSnackBar(
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
                               SnackBar(
                                 content: Text(
                                   'Gagal menambahkan mata kuliah: $error',
@@ -262,9 +244,7 @@ class _CoursePageState extends State<CoursePage> {
                             );
                           }
                         },
-                  child: Text(
-                    isSaving ? 'Menyimpan...' : 'Simpan',
-                  ),
+                  child: Text(isSaving ? 'Menyimpan...' : 'Simpan'),
                 ),
               ],
             );
@@ -282,19 +262,17 @@ class _CoursePageState extends State<CoursePage> {
   Future<void> showEditCourseForm(Course course) async {
     if (course.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ID mata kuliah tidak ditemukan.'),
-        ),
+        const SnackBar(content: Text('ID mata kuliah tidak ditemukan.')),
       );
       return;
     }
 
     final formKey = GlobalKey<FormState>();
 
-    final titleController =
-        TextEditingController(text: course.title);
-    final creditsController =
-        TextEditingController(text: course.credits.toString());
+    final titleController = TextEditingController(text: course.title);
+    final creditsController = TextEditingController(
+      text: course.credits.toString(),
+    );
 
     String selectedStatus = course.status;
     bool isSaving = false;
@@ -335,8 +313,7 @@ class _CoursePageState extends State<CoursePage> {
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          if (value == null ||
-                              value.trim().isEmpty) {
+                          if (value == null || value.trim().isEmpty) {
                             return 'Nama mata kuliah wajib diisi';
                           }
                           return null;
@@ -351,11 +328,9 @@ class _CoursePageState extends State<CoursePage> {
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          final credits =
-                              int.tryParse(value ?? '');
+                          final credits = int.tryParse(value ?? '');
 
-                          if (credits == null ||
-                              credits < 1) {
+                          if (credits == null || credits < 1) {
                             return 'Masukkan jumlah SKS yang valid';
                           }
                           return null;
@@ -377,10 +352,7 @@ class _CoursePageState extends State<CoursePage> {
                             value: 'planned',
                             child: Text('Planned'),
                           ),
-                          DropdownMenuItem(
-                            value: 'done',
-                            child: Text('Done'),
-                          ),
+                          DropdownMenuItem(value: 'done', child: Text('Done')),
                         ],
                         onChanged: (value) {
                           if (value != null) {
@@ -407,8 +379,7 @@ class _CoursePageState extends State<CoursePage> {
                   onPressed: isSaving
                       ? null
                       : () async {
-                          if (!formKey.currentState!
-                              .validate()) {
+                          if (!formKey.currentState!.validate()) {
                             return;
                           }
 
@@ -420,17 +391,13 @@ class _CoursePageState extends State<CoursePage> {
                             final updatedCourse = Course(
                               id: course.id,
                               code: course.code,
-                              title:
-                                  titleController.text.trim(),
-                              credits: int.parse(
-                                creditsController.text.trim(),
-                              ),
+                              title: titleController.text.trim(),
+                              credits: int.parse(creditsController.text.trim()),
                               status: selectedStatus,
                               createdAt: course.createdAt,
                             );
 
-                            await repository
-                                .updateCourse(updatedCourse);
+                            await repository.updateCourse(updatedCourse);
 
                             if (!dialogContext.mounted) return;
                             Navigator.pop(dialogContext);
@@ -439,8 +406,7 @@ class _CoursePageState extends State<CoursePage> {
 
                             if (!mounted) return;
 
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(
+                            ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
                                   'Mata kuliah berhasil diperbarui.',
@@ -454,8 +420,7 @@ class _CoursePageState extends State<CoursePage> {
 
                             if (!dialogContext.mounted) return;
 
-                            ScaffoldMessenger.of(dialogContext)
-                                .showSnackBar(
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
                               SnackBar(
                                 content: Text(
                                   'Gagal mengedit mata kuliah: $error',
@@ -464,9 +429,7 @@ class _CoursePageState extends State<CoursePage> {
                             );
                           }
                         },
-                  child: Text(
-                    isSaving ? 'Menyimpan...' : 'Simpan Perubahan',
-                  ),
+                  child: Text(isSaving ? 'Menyimpan...' : 'Simpan Perubahan'),
                 ),
               ],
             );
@@ -483,9 +446,7 @@ class _CoursePageState extends State<CoursePage> {
   Future<void> confirmDeleteCourse(Course course) async {
     if (course.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ID mata kuliah tidak ditemukan.'),
-        ),
+        const SnackBar(content: Text('ID mata kuliah tidak ditemukan.')),
       );
       return;
     }
@@ -534,18 +495,14 @@ class _CoursePageState extends State<CoursePage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Mata kuliah "${course.title}" berhasil dihapus.',
-          ),
+          content: Text('Mata kuliah "${course.title}" berhasil dihapus.'),
         ),
       );
     } catch (error) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal menghapus mata kuliah: $error'),
-        ),
+        SnackBar(content: Text('Gagal menghapus mata kuliah: $error')),
       );
     }
   }
@@ -562,6 +519,13 @@ class _CoursePageState extends State<CoursePage> {
             onPressed: isLoading ? null : refreshCourses,
             icon: const Icon(Icons.refresh),
           ),
+          IconButton(
+            tooltip: 'Logout',
+            onPressed: () async {
+              await Supabase.instance.client.auth.signOut();
+            },
+            icon: const Icon(Icons.logout),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -577,9 +541,7 @@ class _CoursePageState extends State<CoursePage> {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context)
-                  .colorScheme
-                  .primaryContainer,
+              color: Theme.of(context).colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -587,10 +549,7 @@ class _CoursePageState extends State<CoursePage> {
               children: [
                 const Text(
                   'Identitas Mahasiswa',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text('Nama: $studentName'),
@@ -606,10 +565,7 @@ class _CoursePageState extends State<CoursePage> {
               alignment: Alignment.centerLeft,
               child: Text(
                 'Daftar Mata Kuliah',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -617,9 +573,7 @@ class _CoursePageState extends State<CoursePage> {
           const SizedBox(height: 8),
 
           // Isi daftar.
-          Expanded(
-            child: _buildCourseContent(),
-          ),
+          Expanded(child: _buildCourseContent()),
         ],
       ),
     );
@@ -627,9 +581,7 @@ class _CoursePageState extends State<CoursePage> {
 
   Widget _buildCourseContent() {
     if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (errorMessage != null) {
@@ -639,23 +591,14 @@ class _CoursePageState extends State<CoursePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.error_outline,
-                size: 48,
-                color: Colors.red,
-              ),
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
               const SizedBox(height: 12),
               const Text(
                 'Gagal memuat data mata kuliah.',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Text(
-                errorMessage!,
-                textAlign: TextAlign.center,
-              ),
+              Text(errorMessage!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: refreshCourses,
@@ -675,15 +618,9 @@ class _CoursePageState extends State<CoursePage> {
           physics: const AlwaysScrollableScrollPhysics(),
           children: const [
             SizedBox(height: 100),
-            Icon(
-              Icons.menu_book_outlined,
-              size: 64,
-              color: Colors.grey,
-            ),
+            Icon(Icons.menu_book_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Center(
-              child: Text('Belum ada mata kuliah.'),
-            ),
+            Center(child: Text('Belum ada mata kuliah.')),
           ],
         ),
       );
@@ -693,11 +630,7 @@ class _CoursePageState extends State<CoursePage> {
       onRefresh: refreshCourses,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(
-          left: 12,
-          right: 12,
-          bottom: 90,
-        ),
+        padding: const EdgeInsets.only(left: 12, right: 12, bottom: 90),
         itemCount: courses.length,
         itemBuilder: (context, index) {
           final course = courses[index];
@@ -705,14 +638,10 @@ class _CoursePageState extends State<CoursePage> {
           return Card(
             margin: const EdgeInsets.symmetric(vertical: 6),
             child: ListTile(
-              leading: CircleAvatar(
-                child: Text('${course.credits}'),
-              ),
+              leading: CircleAvatar(child: Text('${course.credits}')),
               title: Text(
                 course.title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Padding(
                 padding: const EdgeInsets.only(top: 6),
@@ -731,20 +660,14 @@ class _CoursePageState extends State<CoursePage> {
                 children: [
                   IconButton(
                     tooltip: 'Edit course',
-                    icon: const Icon(
-                      Icons.edit_outlined,
-                      color: Colors.indigo,
-                    ),
+                    icon: const Icon(Icons.edit_outlined, color: Colors.indigo),
                     onPressed: () {
                       showEditCourseForm(course);
                     },
                   ),
                   IconButton(
                     tooltip: 'Hapus course',
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Colors.red,
-                    ),
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
                     onPressed: () {
                       confirmDeleteCourse(course);
                     },
@@ -756,5 +679,215 @@ class _CoursePageState extends State<CoursePage> {
         },
       ),
     );
+  }
+}
+
+// AUTH GATE: Menentukan halaman berdasarkan status login Supabase.
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final supabase = Supabase.instance.client;
+
+    return StreamBuilder<AuthState>(
+      stream: supabase.auth.onAuthStateChange,
+      builder: (context, snapshot) {
+        if (supabase.auth.currentSession != null) {
+          return const CoursePage();
+        }
+        return const LoginPage();
+      },
+    );
+  }
+}
+
+// LOGIN PAGE
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _loading = false;
+  bool _showRegister = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+
+    try {
+      await Supabase.instance.client.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login gagal. Periksa koneksi internet.')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_showRegister ? 'Register' : 'Login')),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Icon(
+                  _showRegister ? Icons.person_add_alt_1 : Icons.lock_open,
+                  size: 72,
+                  color: Colors.indigo,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _showRegister ? 'Buat Akun Baru' : 'Selamat Datang',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Email wajib diisi';
+                    }
+                    if (!value.contains('@')) return 'Format email tidak valid';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: Icon(Icons.lock_outline),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty)
+                      return 'Password wajib diisi';
+                    if (_showRegister && value.length < 6) {
+                      return 'Password minimal 6 karakter';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _loading
+                      ? null
+                      : _showRegister
+                      ? _register
+                      : _login,
+                  child: _loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(_showRegister ? 'Register' : 'Login'),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _loading
+                      ? null
+                      : () {
+                          setState(() {
+                            _showRegister = !_showRegister;
+                            _formKey.currentState?.reset();
+                            _passwordController.clear();
+                          });
+                        },
+                  child: Text(
+                    _showRegister
+                        ? 'Sudah punya akun? Login'
+                        : 'Belum punya akun? Register',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+
+    try {
+      final response = await Supabase.instance.client.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+      if (response.session != null) {
+        // Jika konfirmasi email dinonaktifkan, AuthGate otomatis masuk ke CoursePage.
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Registrasi berhasil!')));
+      } else {
+        setState(() => _showRegister = false);
+        _passwordController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Registrasi berhasil. Silakan cek email untuk konfirmasi, lalu login.',
+            ),
+          ),
+        );
+      }
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registrasi gagal. Periksa koneksi internet.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 }
